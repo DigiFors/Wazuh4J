@@ -1,0 +1,35 @@
+CALL apoc.load.xml("http://10.7.2.75:8000/9009-digifors_rerate-wineventlog.rules.xml") YIELD value
+
+
+// Create the group node
+UNWIND apoc.text.split(value.name, ",") AS groupName
+MERGE (g:Group {name: groupName})
+
+with value, g
+unwind [c IN value._children where c is not null] as child
+merge (r:Rule {
+    id:child.id, 
+    level:child.level,
+    frequency: CASE WHEN child.frequency IS NOT NULL THEN child.frequency ELSE "" END,
+    timeframe: CASE WHEN child.timeframe IS NOT NULL THEN child.timeframe ELSE "" END,
+    description: CASE WHEN child.description IS NOT NULL THEN child.description ELSE "" END
+    })
+merge (r)-[:BELONGS]->(g)
+
+with child, r
+with [gr in child._children where gr._type='group'] as groupElems, child, r
+unwind groupElems as groupElem
+unwind apoc.text.split(groupElem._text, ",") AS groupName
+merge (gg:Group {name: groupName})
+merge (r)-[:BELONGS]->(gg)
+
+with child, r
+with [elem IN child._children where elem._type = "if_sid" or elem._type = "if_matched_sid"] as elems, r, child
+unwind elems as sid 
+UNWIND apoc.text.split(sid._text, ",") AS ruleId
+merge (rr:Rule {id: ruleId})
+merge (rr)<-[dp:DEPENDS_ON {field: sid._type}]-(r) 
+
+return r, rr, dp ; 
+
+
