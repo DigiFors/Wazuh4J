@@ -7,10 +7,15 @@ the database behind all this is neo4j. it is a graph database perfectly tailored
 https://medium.com/@balajeraam/neo4j-for-beginners-a8e5a64b074a
 
 
-### starting with docker 
-to start a neo4j server using docker, exectute this command: 
+## usage
+1) start the docker container `docker compose up`
+    1.1) change the password for neo4j (visit http://ipaddress:7474 ) and put it into the python file (quick and dirty FOR NOW!)
+2) put wazuh rules into the `./import` folder 
+3) initiate python `python3 -m venv venv` and `pip3 install -r requirements.txt` 
+4) call python script ON THE SAME HOST AS DOCKER: `python3 load.py <path_to_import_folder>` 
+5) profit 
 
-```
-docker run     -p 7474:7474 -p 7687:7687     --name neo4j-apoc     -e NEO4J_apoc_export_file_enabled=true     -e NEO4J_apoc_import_file_enabled=true     -e NEO4J_apoc_import_file_use__neo4j__config=true     -e NEO4J_PLUGINS=\[\"apoc\"\]     neo4j:2025.02
 
-```
+use this query for testing: ` match p=(:Rule {id: "101527"})-[:DEPENDS_ON * ]->(:Rule) return p ; `
+
+or just click on the nodes/edges/labels. you'll figure it out. 
