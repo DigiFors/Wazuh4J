@@ -11,6 +11,7 @@ https://medium.com/@balajeraam/neo4j-for-beginners-a8e5a64b074a
 1) start the docker container `docker compose up`
 
     1.1) change the password for neo4j (visit http://ipaddress:7474 , creds `neo4j:neo4j`) 
+    
     1.2) put it into the python file (quick and dirty FOR NOW!)
     
 2) put wazuh rules into the `./import` folder 
