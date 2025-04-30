@@ -1,39 +1,24 @@
 import requests
+import os
+import sys
 from neo4j import GraphDatabase
 import re
 from bs4 import BeautifulSoup
 
-# Server where XML files are listed
-FILE_SERVER_URL = "http://10.7.2.75:8000/"
-
 # Neo4j connection details
 NEO4J_URI = "bolt://localhost:7687"
 NEO4J_USER = "neo4j"
-NEO4J_PASSWORD = "digifors"
+NEO4J_PASSWORD = "CHANGE_ME_PLEASE"
+
+FILE_SERVER_URL = "file://"
 
 # Get XML file list from the directory listing
-def get_xml_files():
-    try:
-        response = requests.get(FILE_SERVER_URL)
-        response.raise_for_status()
-        page_content = response.text
-
-        # Use BeautifulSoup to parse HTML
-        soup = BeautifulSoup(page_content, "html.parser")
-        links = soup.find_all("a", href=True)
-
-        # Extract .xml files
-        xml_files = [link["href"] for link in links if link["href"].endswith(".xml")]
-
-        # If HTML parsing fails, use regex as a fallback
-        if not xml_files:
-            xml_files = re.findall(r'href="(.*?\.xml)"', page_content)
-
-        return xml_files
-
-    except requests.RequestException as e:
-        print(f"Error fetching file list: {e}")
-        return []
+def get_xml_files(path):
+    xml_files = []
+    for file_name in os.listdir(path):
+        if file_name.lower().endswith('.xml'):
+            xml_files.append(file_name)
+    return xml_files
 
 # Load XML files into Neo4j
 def load_files_into_neo4j(xml_files):
@@ -41,6 +26,7 @@ def load_files_into_neo4j(xml_files):
         with driver.session() as session:
             for xml_file in xml_files:
                 xml_url = f"{FILE_SERVER_URL}{xml_file}"
+                print("Loading file from", xml_url)
                 cypher_query = """
                 CALL apoc.load.xml($xml_url) YIELD value
                 UNWIND apoc.text.split(value.name, ",") AS groupName
@@ -50,8 +36,7 @@ def load_files_into_neo4j(xml_files):
                 MERGE (r:Rule {
                     id:child.id,
                     level:child.level,
-                    frequency: CASE WHEN child.frequency IS NOT NULL THEN child.frequency ELSE "" END,
-                    timeframe: CASE WHEN child.timeframe IS NOT NULL THEN child.timeframe ELSE "" END,
+                    frequency: CASE WHEN child.frequency IS NOT NULL THEN child.frequency ELSE "" END,           
                     description: CASE WHEN child.description IS NOT NULL THEN child.description ELSE "" END,
                     overwrite: CASE WHEN child.overwrite IS NOT NULL THEN child.overwrite ELSE "" END
                 })
@@ -70,12 +55,20 @@ def load_files_into_neo4j(xml_files):
                 MERGE (rr)<-[dp:DEPENDS_ON {field: sid._type}]-(r)
                 RETURN r, rr, dp;
                 """
-                session.run(cypher_query, xml_url=xml_url)
-                print(f"Loaded {xml_file} into Neo4j.")
+                try:
+                    session.run(cypher_query, xml_url=xml_url)
+                    print(f"Loaded {xml_file} into Neo4j.")
+                except Exception as e:
+                    print("YOOO ERROR")
+                    print(e)
+
 
 # Main Execution
 def main():
-    xml_files = get_xml_files()
+    p = sys.argv[1]
+    xml_files = get_xml_files(p)
+    print("loading these files")
+    print(xml_files)
     if not xml_files:
         print("No XML files found.")
         return
