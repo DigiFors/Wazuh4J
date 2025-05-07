@@ -23,3 +23,17 @@ https://medium.com/@balajeraam/neo4j-for-beginners-a8e5a64b074a
 use this query for testing: ` match p=(:Rule {id: "101527"})-[:DEPENDS_ON * ]->(:Rule) return p ; `
 
 or just click on the nodes/edges/labels. you'll figure it out. 
+
+## FAQ (Frequently Asked QUERIES)
+here are some queries which are commonly used and their SQL equivalents. 
+
+| NEO4J                                       | SQL                                | Semantics                                             |
+|---------------------------------------------|------------------------------------|-------------------------------------------------------|
+| `match (n) detach delete n;`                | `delete * from <alles> ; `         | delete everything                                     |
+| `match (n) return n ;`                      | `select * from <alles> ; `         | get everything                                        |
+| `match (n:LABEL) return n; `                | `select * from LABEL ; `           | get all nodes of one type (Node label: Group, Help).  |
+| `match (n:LABEL) return n.attr1, n.attr2 ;` | `select attr1,attr2 from LABEL ; ` | get fields of a certain type                          |
+
+
+here is some general introduciton into neo4j 
+https://medium.com/@balajeraam/neo4j-for-beginners-a8e5a64b074a
