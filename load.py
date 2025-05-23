@@ -115,29 +115,47 @@ def load_files_into_neo4j(xml_files):
                     result.consume()
                     print(f"Loaded {xml_url} into Neo4j.")
                 except Exception as e:
-                    print(f"Could not load xml file to Neo4j db: {e}")
+                    raise(f"Could not load xml file {xml_url} to Neo4j db: {e}")
 
 
 def add_root_to_xml(xml_file):
     """
     Wraps xml file with a root element and removes illegal character &
     """
-    # Read the content of the file
-    with open(xml_file, 'r', encoding='utf-8') as f:
-        xml_content = f.read().strip()
-        
-    # Replace standalone & with &amp;, ignoring already-escaped entities
-    xml_content = xml_content.replace('&', ' ')
 
-    # Wrap content in a root if not already rooted
-    wrapped_content = f"<root>{xml_content}</root>"
+    def escape_regex_content(match):
+        # matches are like "<regex*>*</regex>"
+        # e.g. <regex type="pcre2">Set-.+VirtualDirectory.+?Url.+\<\w+.*\>.*?\<\/\w+\>.+?VirtualDirectory</regex>
+        start_tag = match.group(1)  # start tag <regex*>
+        content = match.group(2)    # content of regex node
+        end_tag = match.group(3)    # end tag </regex>
 
-    # Parse the wrapped content
-    root = ET.fromstring(wrapped_content)
+        # Escape < and > inside the regex content
+        content = content.replace("<", "&lt;").replace(">", "&gt;")
+        return f'{start_tag}{content}{end_tag}'
 
-    # Write to a new file (or overwrite)
-    tree = ET.ElementTree(root)
-    tree.write(xml_file, encoding='utf-8', xml_declaration=True)
+    try:
+        # Read the content of the file
+        with open(xml_file, 'r', encoding='utf-8') as f:
+            xml_content_original = f.read().strip()
+
+        # Replace standalone & with &amp;, ignoring already-escaped entities
+        xml_content = xml_content_original.replace('&', ' ')
+
+        # escape < and > in lines "<regex*>*</regex>" (cannot be done by simple replace because we still need the brackets of the xml tags)
+        xml_content = re.sub("(<regex[^>]*>)(.+?)(</regex>)", escape_regex_content, xml_content)
+
+        # Wrap content in a root if not already rooted
+        wrapped_content = f"<root>{xml_content}</root>"
+
+        # Parse the wrapped content
+        root = ET.fromstring(wrapped_content)
+
+        # Write to a new file (or overwrite)
+        tree = ET.ElementTree(root)
+        tree.write(xml_file, encoding='utf-8', xml_declaration=True)
+    except Exception as e:
+        raise Exception(f"Add root to xml file {xml_file} failed: {e}")
     
     
 @click.command()
