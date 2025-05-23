@@ -12,10 +12,11 @@ https://medium.com/@balajeraam/neo4j-for-beginners-a8e5a64b074a
 
     1.1) change the password for neo4j (visit http://localhost:7474 , creds `neo4j:neo4j`) 
     
-    1.2) put the new password into the python file (`NEO4J_PASSWORD` quick and dirty FOR NOW!)
+    1.2) Create a .env file from the .env.template. Put the new password there.
 
 2) Initiate a python virtual environment with `pipenv shell` and install dependencies with `pipenv update` 
-3) To load wazuh rules into the database, run the python script ON THE SAME HOST AS THE DOCKER CONTAINER: `python3 load.py -x <path_to_folder_with_xml_files>`. If you want to load xml files from multiple folders just add ` -x <another_folder_path` for each folder. 
+3) To load wazuh rules into the database, run the python script ON THE SAME HOST AS THE DOCKER CONTAINER: `python3 load.py -x <path_to_folder_with_xml_files>`. <br> 
+If you want to load xml files from multiple folders just add `-x <another_folder_path` for each folder. 
 4) profit 
 
 

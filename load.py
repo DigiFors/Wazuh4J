@@ -1,14 +1,18 @@
 import os
+import re
 import shutil
 from pathlib import Path
 import click
+from dotenv import load_dotenv
 from neo4j import GraphDatabase
 import xml.etree.ElementTree as ET
 
+load_dotenv()
+
 # Neo4j connection details
-NEO4J_URI = "bolt://localhost:7687"
-NEO4J_USER = "neo4j"
-NEO4J_PASSWORD = "digifors123"
+NEO4J_URI = os.getenv("NEO4J_URL")
+NEO4J_USER = os.getenv("NEO4J_USER")
+NEO4J_PASSWORD = os.getenv("NEO4J_PASSWORD")
 
 FILE_SERVER_URL = "file://"
 XML_IMPORT_FOLDER = "./import"
