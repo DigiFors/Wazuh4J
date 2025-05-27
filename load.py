@@ -57,65 +57,86 @@ def load_files_into_neo4j(xml_files):
                 xml_url = f"{FILE_SERVER_URL}{xml_file}"
                 
                 print("Loading file from", xml_url)
-                cypher_query = """
+                cypher_query_add_nodes = """
+                    // load xml and extract groups and filter for <group> elements at the root level.
                     CALL apoc.load.xml($xml_url) YIELD value AS root
                     UNWIND [v in root._children WHERE v._type = 'group'] as value
+                    // Groups can be comma-separated; splits them and creates one Group node per name (MERGE ensures no duplicates)
                     UNWIND apoc.text.split(value.name, ",") AS groupName
-                    MERGE (g:Group {name: groupName})
+                    MERGE (g:Group {name: groupName}) //create group
+                    //Extract rules inside the group
                     WITH value, g
-                    UNWIND [c IN value._children WHERE c IS NOT NULL AND c._type = "rule"] AS rule
-                    MERGE (r:Rule {id: rule.id})
-                    MERGE (r)-[:BELONGS]->(g)
-                    WITH rule, r
+                    UNWIND [c IN value._children WHERE c IS NOT NULL AND c._type = "rule"] AS parsed_rule
+                    // Extract parent id (if_sid or if_matched_sid value)
+                    WITH parsed_rule, g,
+                         [elem IN parsed_rule._children WHERE elem._type IN ["if_sid", "if_matched_sid"]] AS elems
+                    WITH parsed_rule, g,
+                        CASE WHEN size(elems) > 0 THEN apoc.text.split(elems[0]._text, ",")[0] ELSE NULL END AS parent_id
+                        
+                    MERGE (rule_node:Rule {id: parsed_rule.id}) //create rule node
+                    SET rule_node.parent = parent_id  // save parent ID as a property
+                    MERGE (rule_node)-[:BELONGS]->(g) // assign rule node to group
+                    
                     // add the inline rule properties like frequency
-                    CALL (rule, r) {
-                        WITH [prop_name IN keys(rule) WHERE NOT prop_name STARTS WITH "_"] AS prop_names, rule, r
-                        CALL apoc.create.setProperties(r,prop_names, [prop_name IN prop_names | rule[prop_name]]) yield node
+                    WITH parsed_rule,  rule_node
+                    CALL (parsed_rule,  rule_node) {
+                        //Filter rule properties to ignore internal ones (those starting with _)
+                        WITH [prop_name IN keys(parsed_rule) WHERE NOT prop_name STARTS WITH "_"] AS prop_names, parsed_rule,  rule_node
+                        //Set remaining properties (like frequency, level, etc.) on the rule node
+                        CALL apoc.create.setProperties(rule_node, prop_names, [prop_name IN prop_names | parsed_rule[prop_name]]) YIELD node
                         RETURN node
                     }
-                    WITH rule, r
-                    // add group relation
-                    CALL (rule, r) {
-                        WITH [gr IN rule._children WHERE gr._type='group'] AS groupElems, rule, r
+                    
+                    // add group relation (add additional groups listed within a rule - a rule may refer to additional groups)
+                    WITH parsed_rule,  rule_node
+                    CALL (parsed_rule,  rule_node) {
+                        WITH [gr IN parsed_rule._children WHERE gr._type='group'] AS groupElems, parsed_rule,  rule_node
                         UNWIND groupElems AS groupElem
                         UNWIND apoc.text.split(groupElem._text, ",") AS groupName
                         MERGE (gg:Group {name: groupName})
-                        MERGE (r)-[:BELONGS]->(gg)
+                        MERGE (rule_node)-[:BELONGS]->(gg)
                     }
-                    // add description
-                    CALL (rule, r) {
-                        WITH [descr IN rule._children WHERE descr._type = "description"] AS descr, r, rule
-                        UNWIND descr AS des
-                        SET r.description = des._text
-                    }
-                    // add dependend rules
-                    CALL (rule, r) {
-                        WITH [elem IN rule._children WHERE elem._type = "if_sid" OR elem._type = "if_matched_sid"] AS elems, r, rule
-                        UNWIND elems AS sid
-                        UNWIND apoc.text.split(sid._text, ",") AS ruleId
-                        MERGE (rr:Rule {id: ruleId})
-                        MERGE (rr)<-[dp:DEPENDS_ON {field: sid._type}]-(r)
+                    // add rule description
+                    CALL (parsed_rule,  rule_node) {
+                        WITH [parsed_descriptions IN parsed_rule._children WHERE parsed_descriptions._type = "description"] AS parsed_descriptions,  rule_node, parsed_rule
+                        UNWIND parsed_descriptions AS descr
+                        SET rule_node.description = descr._text
                     }
                     // add options
-                    CALL (rule, r) {
-                        WITH [opts IN rule._children WHERE opts._type = "options"] AS opts, r, rule
+                    CALL (parsed_rule, rule_node) {
+                        WITH [opts IN parsed_rule._children WHERE opts._type = "options"] AS opts, rule_node, parsed_rule
                         UNWIND opts AS opt
-                        SET r.options = coalesce(r.options, []) + opt._text
+                        SET rule_node.options = coalesce(rule_node.options, []) + opt._text
                     }
-                    // add fields
-                    CALL (rule, r) {
-                        WITH [fields IN rule._children WHERE fields._type = "field"] AS fields, r, rule
-                        CALL apoc.create.setProperties(r,[field in fields | "Field: " + field.name], [field IN fields | field._text]) yield node
+                    // add named fields
+                    CALL (parsed_rule, rule_node) {
+                        // for each field, create a property on the rule like '"Field: myFieldName = "value"'
+                        WITH [fields IN parsed_rule._children WHERE fields._type = "field"] AS fields, rule_node, parsed_rule
+                        CALL apoc.create.setProperties(rule_node, [field in fields | "Field: " + field.name], [field IN fields | field._text]) yield node
                         RETURN node
                     }
-                    RETURN r, rule
+
+                    RETURN rule_node, parsed_rule
                 """
                 try:
-                    result = session.run(cypher_query, xml_url=xml_url)
+                    result = session.run(cypher_query_add_nodes, xml_url=xml_url)
                     result.consume()
                     print(f"Loaded {xml_url} into Neo4j.")
                 except Exception as e:
-                    raise(f"Could not load xml file {xml_url} to Neo4j db: {e}")
+                    raise Exception(f"Could not load xml file {xml_url} to Neo4j db: {e}")
+
+            # after all nodes are added, add edges
+            cypher_query_add_edges = """
+                    // add dependency relationships
+                    MATCH (child:Rule)
+                    WHERE child.parent IS NOT NULL
+                    MATCH (parent:Rule {id: child.parent})
+                    MERGE (child)-[:DEPENDS_ON {field: "parent"}]->(parent)
+            """
+            result = session.run(cypher_query_add_edges)
+            result.consume()
+            print(f"Connected all children with their parent nodes.")
+
 
 
 def add_root_to_xml(xml_file):
