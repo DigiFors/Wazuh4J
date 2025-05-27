@@ -2,10 +2,10 @@
 This repository contains everything necessary for 1) importing 2) visualizing and 3) analysing the wazuh rule set.  
 
 ## neo4j
-the database behind all this is neo4j. it is a graph database perfectly tailored to this problem. more information about it here: 
+The database behind all this is neo4j. It is a graph database perfectly tailored to this problem. 
+More information about it here: https://medium.com/@balajeraam/neo4j-for-beginners-a8e5a64b074a
 
-https://medium.com/@balajeraam/neo4j-for-beginners-a8e5a64b074a
-
+If you want to dive into the cypher query language: https://neo4j.com/docs/cypher-manual/current/introduction/
 
 ## usage
 1) start the docker container `docker compose up`
@@ -27,13 +27,27 @@ or just click on the nodes/edges/labels. you'll figure it out.
 ## FAQ (Frequently Asked QUERIES)
 here are some queries which are commonly used and their SQL equivalents. 
 
-| NEO4J                                       | SQL                                | Semantics                                             |
-|---------------------------------------------|------------------------------------|-------------------------------------------------------|
-| `match (n) detach delete n;`                | `delete * from <alles> ; `         | delete everything                                     |
-| `match (n) return n ;`                      | `select * from <alles> ; `         | get everything                                        |
-| `match (n:LABEL) return n; `                | `select * from LABEL ; `           | get all nodes of one type (Node label: Group, Help).  |
-| `match (n:LABEL) return n.attr1, n.attr2 ;` | `select attr1,attr2 from LABEL ; ` | get fields of a certain type                          |
+| NEO4J                                                                       | SQL                            | Semantics                                                                           |
+|-----------------------------------------------------------------------------|--------------------------------|-------------------------------------------------------------------------------------|
+| `match (n) detach delete n;`                                                | `delete * from <alles>; `      | delete everything                                                                   |
+| `match (n) return n ;`                                                      | `select * from <alles>; `      | get everything                                                                      |
+| `match (n:LABEL) return n; `                                                | `select * from LABEL; `        | get all nodes of one type (Node label: Group, Help).                                |
+| `match (n:LABEL) return n.attr1, n.attr2 ;`                                 | `select attr1,attr2 from LABEL; ` | get fields of a certain type                                                        | 
 
+### Orphaned children
+**Get all nodes with a non-existent parent (the specified parent rule does not exist):**
+#TODO: not working correctly
+```cypher
+MATCH (r:Rule)
+WHERE r.parent IS NOT NULL
+  AND NOT (r)-[:DEPENDS_ON {field: "parent"}]->(:Rule {id: r.parent})
+RETURN r.id AS orphanRule, r.parent AS missingParent;
+```
+
+**Get all nodes with no parent specified:**
+```cypher
+MATCH (r:Rule) WHERE r.parent IS NULL RETURN r;
+```
 
 here is some general introduction into neo4j 
 https://medium.com/@balajeraam/neo4j-for-beginners-a8e5a64b074a
