@@ -4,7 +4,6 @@ services:
   neo4j-apoc:
     image: neo4j:2025.02
     container_name: neo4j-apoc
-    #user: "1000"
     ports:
       - "7474:7474"
       - "7687:7687"

@@ -27,8 +27,8 @@ def copy_xml_files_and_get_paths(folder_paths) -> list:
     xml_file_copies = []
 
     # clear import folder
-    shutil.rmtree(XML_IMPORT_FOLDER)
-    os.makedirs(XML_IMPORT_FOLDER)
+    # shutil.rmtree(XML_IMPORT_FOLDER)
+    # os.makedirs(XML_IMPORT_FOLDER)
 
     for folder in folder_paths:
         # find all xml files in the folder
@@ -40,6 +40,7 @@ def copy_xml_files_and_get_paths(folder_paths) -> list:
 
             # set permissions for linux 
             os.chmod(file_copy_path, 0o644)
+            print("changed permissions...!!!")
             add_root_to_xml(Path(XML_IMPORT_FOLDER, file_path_obj.name.replace(" ", "")))
             # store path to file copy
             xml_file_copies.append(str(Path(file_copy_path).as_posix()))
@@ -133,11 +134,11 @@ def add_root_to_xml(xml_file):
 @click.option('--xml-folders', '-x', multiple=True, type=click.Path(exists=True, readable=True))
 def main(xml_folders):
     print(f"Searching for XML files in {xml_folders}")
-    #xml_files = copy_xml_files_and_get_paths(xml_folders)
+    xml_files = copy_xml_files_and_get_paths(xml_folders)
 
-    # if not xml_files:
-        # print("No XML files found.")
-        # return
+    if not xml_files:
+        print("No XML files found.")
+        return
 
 
 
