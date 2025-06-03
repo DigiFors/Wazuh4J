@@ -40,7 +40,6 @@ def copy_xml_files_and_get_paths(folder_paths) -> list:
 
             # set permissions for linux 
             os.chmod(file_copy_path, 0o644)
-            print("changed permissions...!!!")
             add_root_to_xml(Path(XML_IMPORT_FOLDER, file_path_obj.name.replace(" ", "")))
             # store path to file copy
             xml_file_copies.append(str(Path(file_copy_path).as_posix()))
@@ -128,7 +127,7 @@ def add_root_to_xml(xml_file):
         tree.write(xml_file, encoding='utf-8', xml_declaration=True)
     except Exception as e:
         raise Exception(f"Add root to xml file {xml_file} failed: {e}")
-    
+            
     
 @click.command()
 @click.option('--xml-folders', '-x', multiple=True, type=click.Path(exists=True, readable=True))
