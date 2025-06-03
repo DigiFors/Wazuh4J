@@ -49,5 +49,14 @@ RETURN r.id AS orphanRule, r.parent AS missingParent;
 MATCH (r:Rule) WHERE r.parent IS NULL RETURN r;
 ```
 
+**Get all node pairs of rules that overwrite eachother:**
+```cypher
+MATCH (n)-[:OVERWRITES]->(a) RETURN a, n;
+```
+**Get all rule id duplicates that do not overwrite eachother:**
+```cypher
+MATCH (rule:Rule), (rule_duplicate:Rule) WHERE rule.id = rule_duplicate.id and not elementId(rule) = elementId(rule_duplicate) AND NOT (rule)-[:OVERWRITES]-(rule_duplicate) RETURN rule, rule_duplicate
+```
+
 here is some general introduction into neo4j 
 https://medium.com/@balajeraam/neo4j-for-beginners-a8e5a64b074a

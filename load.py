@@ -85,7 +85,20 @@ def load_files_into_neo4j(xml_files):
             """
             result = session.run(cypher_query_add_edges)
             result.consume()
+            
             print(f"Connected all children with their parent nodes.")
+            # add overwrites relation
+            cypher_query_add_overwrite = """
+                    MATCH (initial_rule:Rule), (overwriting_rule:Rule)
+                    WHERE initial_rule.id = overwriting_rule.id and not elementId(initial_rule) = elementId(overwriting_rule) and  overwriting_rule.overwrite = "yes" and (initial_rule.overwrite IS NULL OR initial_rule.overwrite = "no")
+                    MERGE (overwriting_rule)-[:OVERWRITES]->(initial_rule)
+            
+            """
+            result = session.run(cypher_query_add_overwrite)
+            result.consume()
+            print("Added overwrites relation.")
+            
+
 
 
 
