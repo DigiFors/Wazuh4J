@@ -18,6 +18,7 @@ If you want to dive into the cypher query language: https://neo4j.com/docs/cyphe
 3) To load wazuh rules into the database, run the python script ON THE SAME HOST AS THE DOCKER CONTAINER: `python3 load.py -x <path_to_folder_with_xml_files>`. <br> 
 If you want to load xml files from multiple folders just add `-x <another_folder_path` for each folder. 
 4) profit 
+5) Check out Queries.md to find the answers to... eveyrthing!!!
 
 
 use this query for testing: ` match p=(:Rule {id: "101527"})-[:DEPENDS_ON * ]->(:Rule) return p ; `
