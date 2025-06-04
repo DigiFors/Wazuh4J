@@ -18,8 +18,11 @@ AND NOT EXISTS {
 }
 RETURN n
 ```
-
+<details>
+<summary>Testing/Replizieren</summary>
 Diese (ungültige) Regel erzeugt diesen Zustand: 
+
+
 ```
   <rule id="8960099" level="5">
           <if_sid>57190</if_sid>
@@ -40,9 +43,13 @@ Diese (ungültige) Regel erzeugt diesen Zustand:
     </mitre>
     <group>pci_dss_10.6.1,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_AU.6,tsc_CC7.2,tsc_CC7.3,</group>
   </rule>
-
-
 ```
+
+
+
+diese regel einfach irgendwo einfügen und die query ausführen
+</details>
+
 
 
 
