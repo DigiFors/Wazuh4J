@@ -87,7 +87,47 @@ Im Umkehrfall (also wo ELTERN > KIND) sind es auch sehr viele. Beispiel: 109180
 
 > HIER MUSS DIE SPITZE KLAMMER UMGEDREHT WERDEN
 
+## Regeln der Digifors
+Folgendes Prädikat gibt die Digifors Regeln aus (Quelle: Kai)
+`r.source_file CONTAINS "digifors" and r.overwrite is null`
+
+In einfacher Sprache: der Dateiname beinhaltet "DIGIFORS" und die Datei ist nicht überschrieben. 
+
+Ob die Overwrite Property über die Herkunft der Regel entscheidet, ist eine philosophische Frage, die jeder für sich selbst beantworten soll. Im Zweifelsfall kann dieses Prädikat einfach verallgemeinert werden: `r.source_file CONTAINS "digifors"` und in folgenden Queries angepasst werden. 
+
 ## Verteilung von IDs
+Wie viele Digifors/Wazuh Regeln (sehe letzter Abschnitt) gibt es in den jeweiligen 10_000-er Blöcken. 
+```
+MATCH (r:Rule)
+WHERE toInteger(r.id) >= 0 AND toInteger(r.id) <= 1000000
+WITH toInteger(toInteger(r.id) / 10000) AS bucket,
+     CASE WHEN r.source_file CONTAINS "digifors" and r.overwrite is null THEN "digifors" ELSE "wazuh" END AS rule_type
+RETURN bucket * 10000 AS bucket_start,
+       (bucket + 1) * 10000 - 1 AS bucket_end,
+       rule_type,
+       count(*) AS rule_count
+ORDER BY bucket_start, rule_type;
+```
+
+Ausgabe: 
+```
+╒════════════╤══════════╤══════════╤══════════╕
+│bucket_start│bucket_end│rule_type │rule_count│
+╞════════════╪══════════╪══════════╪══════════╡
+...
+├────────────┼──────────┼──────────┼──────────┤
+│80000       │89999     │"wazuh"   │637       │
+├────────────┼──────────┼──────────┼──────────┤
+│90000       │99999     │"wazuh"   │967       │
+├────────────┼──────────┼──────────┼──────────┤
+│100000      │109999    │"digifors"│1012      │
+├────────────┼──────────┼──────────┼──────────┤
+...
+├────────────┼──────────┼──────────┼──────────┤
+│500000      │509999    │"wazuh"   │6         │
+└────────────┴──────────┴──────────┴──────────┘
 
 ```
-```
+
+
+
