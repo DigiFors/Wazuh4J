@@ -63,7 +63,13 @@ diese regel einfach irgendwo einfügen und die query ausführen
 
 
 
-## Orphaned children
+## Doppelt-vergebene IDs
+Regeln die dieselbe ID haben, aber sich NICHT ÜBERSCHREIBEN (override=yes ist nicht gesetzt) 
+
 ```
-MATCH (rule:Rule), (rule_duplicate:Rule) WHERE rule.id = rule_duplicate.id and not elementId(rule) = elementId(rule_duplicate) AND NOT (rule)-[:OVERWRITES]-(rule_duplicate) RETURN rule, rule_duplicate
+MATCH (rule:Rule), (rule_duplicate:Rule) 
+WHERE rule.id = rule_duplicate.id and 
+not elementId(rule) = elementId(rule_duplicate) AND 
+NOT (rule)-[:OVERWRITES]-(rule_duplicate) 
+RETURN rule.id, rule.source_file, rule_duplicate.source_file
 ```
