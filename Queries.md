@@ -87,3 +87,7 @@ Im Umkehrfall (also wo ELTERN > KIND) sind es auch sehr viele. Beispiel: 109180
 
 > HIER MUSS DIE SPITZE KLAMMER UMGEDREHT WERDEN
 
+## Verteilung von IDs
+
+```
+```
