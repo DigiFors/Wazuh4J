@@ -6,6 +6,15 @@ Hier nochmal alle gewünschten Abfragen. Separate Datei für die Übersicht
 - `docker compose down -v` (bevorzugt)
 - `match (n) detach delete n ;`
 
+## Regeln mit best. Level aufrufen: 
+
+toInteger ist _manchmal_ notwendig...
+
+```
+match (n:Rule) where toInteger(n.level) > 10 return n.id, n.description, n.level ; 
+
+```
+
 ## Orphaned children
 Regeln, dessen Parent (if_sid oder if_matched_sid) deklariert, aber nicht definiert ist.  
 
