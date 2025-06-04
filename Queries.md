@@ -60,9 +60,6 @@ diese regel einfach irgendwo einfügen und die query ausführen
 </details>
 
 
-
-
-
 ## Doppelt-vergebene IDs
 Regeln die dieselbe ID haben, aber sich NICHT ÜBERSCHREIBEN (override=yes ist nicht gesetzt) 
 
@@ -73,3 +70,17 @@ not elementId(rule) = elementId(rule_duplicate) AND
 NOT (rule)-[:OVERWRITES]-(rule_duplicate) 
 RETURN rule.id, rule.source_file, rule_duplicate.source_file
 ```
+
+## Kinder > Eltern 
+Welche ELTERN haben die kleinere Rule ID als ihre KINDER 
+
+```
+Match (n:Rule) -[:DEPENDS_ON]-> (r:Rule) 
+where toInteger(n.level) > toInteger(r.level) 
+return n ; 
+```
+
+WARNUNG: es sind sehr viele. es sind weitere prädikate notwendig um sich dort zurechtzufiden
+
+
+
