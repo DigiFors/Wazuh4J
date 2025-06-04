@@ -82,5 +82,8 @@ return n ;
 
 WARNUNG: es sind sehr viele. es sind weitere prädikate notwendig um sich dort zurechtzufiden
 
+### Verletzung des Schemas
+Im Umkehrfall (also wo ELTERN > KIND) sind es auch sehr viele. Beispiel: 109180
 
+> HIER MUSS DIE SPITZE KLAMMER UMGEDREHT WERDEN
 
