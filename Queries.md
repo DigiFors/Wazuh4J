@@ -91,7 +91,7 @@ Im Umkehrfall (also wo ELTERN > KIND) sind es auch sehr viele. Beispiel: 109180
 Folgendes Prädikat gibt die Digifors Regeln aus (Quelle: Kai)
 `r.source_file CONTAINS "digifors" and r.overwrite is null`
 
-In einfacher Sprache: der Dateiname beinhaltet "DIGIFORS" und die Datei ist nicht überschrieben. 
+In einfacher Sprache: der Dateiname beinhaltet "DIGIFORS" und die Regel ist nicht überschrieben. 
 
 Ob die Overwrite Property über die Herkunft der Regel entscheidet, ist eine philosophische Frage, die jeder für sich selbst beantworten soll. Im Zweifelsfall kann dieses Prädikat einfach verallgemeinert werden: `r.source_file CONTAINS "digifors"` und in folgenden Queries angepasst werden. 
 
