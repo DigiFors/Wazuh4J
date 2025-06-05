@@ -145,5 +145,81 @@ Ausgabe:
 
 ```
 
+## Trigger-Kette einer Regel 
+
+Es ist manchmal interessant zu wissen welche Ereignisse zum Triggern einer Regel führen. Im allg., müssen alle Vorgänger (Eltern, ...) der Regel getriggert werden, und dann sie selbst. Die folgende Query gibt diese Kette sowie alle `Field`-Attribute aus: 
+
+
+Natürlich muss das ID angepasst werden
+
+```
+MATCH p = (:Rule {id: "101527"})-[:DEPENDS_ON*]->(r:Rule)
+WITH nodes(p) AS rules
+UNWIND rules AS r
+WITH DISTINCT r, 
+     [key IN keys(r) WHERE key STARTS WITH 'Field' | key + ': ' + toString(r[key])] AS field_kv_pairs
+RETURN r.id AS rule_id, r.description, apoc.text.join(field_kv_pairs, ' | ') AS field_string;
+
+```
+ Ausgabe: 
+
+```
+╒════════╤═════════════════════════════════════════════════════╤════════════════════════════════════════════════════╕
+│rule_id │r.description                                        │field_string                                        │
+╞════════╪═════════════════════════════════════════════════════╪════════════════════════════════════════════════════╡
+│"101527"│"Checkpoint SmartDefense $(attack) by $(attack_info)"│"Field: attack_info: ^Command Injection Over HTTP.*"│
+├────────┼─────────────────────────────────────────────────────┼────────────────────────────────────────────────────┤
+│"101526"│"Checkpoint SmartDefense $(attack) by $(attack_info)"│"Field: attack: ^Web Server Enforcement Violation$" │
+├────────┼─────────────────────────────────────────────────────┼────────────────────────────────────────────────────┤
+│"101521"│"Checkpoint SmartDefense $(attack) $(attack_info)"   │"Field: fw_action: ^Detect$"                        │
+├────────┼─────────────────────────────────────────────────────┼────────────────────────────────────────────────────┤
+│"101520"│"Checkpoint SmartDefense generic Event"              │"Field: product: ^SmartDefense$"                    │
+├────────┼─────────────────────────────────────────────────────┼────────────────────────────────────────────────────┤
+│"64220" │"Checkpoint events."                                 │""                                                  │
+├────────┼─────────────────────────────────────────────────────┼────────────────────────────────────────────────────┤
+│"64220" │"Checkpoint events."                                 │""                                                  │
+└────────┴─────────────────────────────────────────────────────┴────────────────────────────────────────────────────┘
+
+```
+
+## Triggern mehrerer Regeln
+
+für explorative analysen, ist es sinnvoll die trigger-kette mehrer regeln auf einmal zu sehen. also wenn wir die kette aller regeln mit level > 12 sehen wollen, hilft uns die folgende abfrage: 
+
+```
+MATCH p = (s:Rule)-[:DEPENDS_ON*0..]->(r:Rule)
+where toInteger(s.level) > 12
+WITH collect(r) AS rules, s
+UNWIND rules AS r
+WITH [key IN keys(r) WHERE key STARTS WITH 'Field' | key + ': ' + toString(r[key])] AS field_kv_pairs, s
+WITH collect(field_kv_pairs) AS all_field_kv_pairs, s
+WITH apoc.coll.flatten(all_field_kv_pairs) AS flat_fields, s
+RETURN s.id, apoc.text.join(flat_fields, ' | ') AS full_chain_fields;
+
+```
+
+für andere konkrete fragenstellungen muss das prädikat einfach angepasst werden :)
+
+
+ausgabe: 
+
+```
+╒════════╤══════════════════════════════════════════════════════════════════════╕
+│s.id    │full_chain_fields                                                     │
+╞════════╪══════════════════════════════════════════════════════════════════════╡
+│"92104" │"Field: win.eventdata.image: (*UTF)\N{U+202E}"                        │
+├────────┼──────────────────────────────────────────────────────────────────────┤
+│"92109" │"Field: win.eventdata.sourceIp: 0:0:0:0:0:0:0:1|127\.0\.0\.1 | Field: │
+│        │win.eventdata.destinationIp: 0:0:0:0:0:0:0:1|127\.0\.0\.1 | Field: win│
+│        │.eventdata.destinationPort: ^3389$ | Field: win.eventdata.destinationP│
+│        │ort: ^3389$"                                                          │
+├────────┼──────────────────────────────────────────────────────────────────────┤
+│"5707"  │""                                                                    │
+├────────┼──────────────────────────────────────────────────────────────────────┤
+│"5714"  │""                                                                    │
+├────────┼──────────────────────────────────────────────────────────────────────┤
+
+```
+
 
 
