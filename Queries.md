@@ -291,7 +291,9 @@ Konkurrierende (Geschwister) Regeln sind die, die unter der selben Bedingungen (
 ```
 MATCH (parent:Rule)<-[:DEPENDS_ON]-(child:Rule)
 WITH parent, child,
-     [key IN keys(child) WHERE key STARTS WITH 'Field' | key + ': ' + toString(child[key])] AS field_kv_pairs
+     [key IN keys(child) WHERE key STARTS WITH 'Field' | key + ': ' + toString(child[key])] +
+     // also include 'match' if it exists
+     CASE WHEN child.match is not null THEN ['match: ' + toString(child.match)] ELSE [] END AS field_kv_pairs
 WITH parent, apoc.text.join(field_kv_pairs, ' | ') AS condition_signature, child
 WITH parent.id AS parent_id, condition_signature, collect(child.id) AS equivalent_children
 WHERE size(equivalent_children) > 1
@@ -305,15 +307,12 @@ ORDER BY parent_id;
 
 Ausgabe: 
 ```
-╒═════════╤═════════════════════════════════════════════╤═════════════════════════════════════════════╕
-│parent_id│condition_signature                          │equivalent_children                          │
-╞═════════╪═════════════════════════════════════════════╪═════════════════════════════════════════════╡
-│"100021" │"Field: apex.cn2: 1 | Field: apex.cn3: 4"    │["100023", "100026"]                         │
-├─────────┼─────────────────────────────────────────────┼─────────────────────────────────────────────┤
-│"1002"   │""                                           │["51533", "51535", "1009", "2942", "3752"]   │
-├─────────┼─────────────────────────────────────────────┼─────────────────────────────────────────────┤
-│"100901" │""                                           │["100902", "100903"]                         │
-├─────────┼─────────────────────────────────────────────┼─────────────────────────────────────────────┤
+╒═════════╤══════════════════════════════════════════╤══════════════════════════════════════════╕
+│parent_id│condition_signature                       │equivalent_children                       │
+╞═════════╪══════════════════════════════════════════╪══════════════════════════════════════════╡
+│"100021" │"Field: apex.cn3: 4 | Field: apex.cn2: 1 |│["100023", "100026"]                      │
+│         │ match: Device Access Control"            │                                          │
+├─────────┼──────────────────────────────────────────┼──────────────────────────────────────────┤
 
 ```
 
