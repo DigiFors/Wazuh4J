@@ -1,6 +1,5 @@
+CALL apoc.load.xml($xml_url) YIELD value as root
 
-// load xml and extract groups and filter for <group> elements at the root level.
-CALL apoc.load.xml($xml_url) YIELD value AS root
 UNWIND [v in root._children WHERE v._type = 'group'] as value
 // Groups can be comma-separated; splits them and creates one Group node per name (MERGE ensures no duplicates)
 UNWIND apoc.text.split(value.name, ",") AS groupName
@@ -10,10 +9,10 @@ WITH value, g
 UNWIND [c IN value._children WHERE c IS NOT NULL AND c._type = "rule"] AS parsed_rule
 // Extract parent id (if_sid or if_matched_sid value)
 WITH parsed_rule, g,
-	 [elem IN parsed_rule._children WHERE elem._type IN ["if_sid", "if_matched_sid"]] AS elems
+         [elem IN parsed_rule._children WHERE elem._type IN ["if_sid", "if_matched_sid"]] AS elems
 WITH parsed_rule, g,
-	CASE WHEN size(elems) > 0 THEN apoc.text.split(elems[0]._text, ",")[0] ELSE NULL END AS parent_id
-	
+        CASE WHEN size(elems) > 0 THEN apoc.text.split(elems[0]._text, ",")[0] ELSE NULL END AS parent_id
+
 MERGE (rule_node:Rule {id: parsed_rule.id, source_file: $xml_url}) //create rule node
 SET rule_node.parent = parent_id  // save parent ID as a property
 MERGE (rule_node)-[:BELONGS]->(g) // assign rule node to group
@@ -21,48 +20,49 @@ MERGE (rule_node)-[:BELONGS]->(g) // assign rule node to group
 // add the inline rule properties like frequency
 WITH parsed_rule,  rule_node
 CALL (parsed_rule,  rule_node) {
-	//Filter rule properties to ignore internal ones (those starting with _)
-	WITH [prop_name IN keys(parsed_rule) WHERE NOT prop_name STARTS WITH "_"] AS prop_names, parsed_rule,  rule_node
-	//Set remaining properties (like frequency, level, etc.) on the rule node
-	CALL apoc.create.setProperties(rule_node, prop_names, [prop_name IN prop_names | parsed_rule[prop_name]]) YIELD node
-	RETURN node
+        //Filter rule properties to ignore internal ones (those starting with _)
+        WITH [prop_name IN keys(parsed_rule) WHERE NOT prop_name STARTS WITH "_"] AS prop_names, parsed_rule,  rule_node
+        //Set remaining properties (like frequency, level, etc.) on the rule node
+        CALL apoc.create.setProperties(rule_node, prop_names, [prop_name IN prop_names | parsed_rule[prop_name]]) YIELD node
+        RETURN node
 }
 
 // add group relation (add additional groups listed within a rule - a rule may refer to additional groups)
 WITH parsed_rule,  rule_node
 CALL (parsed_rule,  rule_node) {
-	WITH [gr IN parsed_rule._children WHERE gr._type='group'] AS groupElems, parsed_rule,  rule_node
-	UNWIND groupElems AS groupElem
-	UNWIND apoc.text.split(groupElem._text, ",") AS groupName
-	MERGE (gg:Group {name: groupName})
-	MERGE (rule_node)-[:BELONGS]->(gg)
-}
-// add rule description
-CALL (parsed_rule,  rule_node) {
-	WITH [parsed_descriptions IN parsed_rule._children WHERE parsed_descriptions._type = "description"] AS parsed_descriptions,  rule_node, parsed_rule
-	UNWIND parsed_descriptions AS descr
-	SET rule_node.description = descr._text
+        WITH [gr IN parsed_rule._children WHERE gr._type='group'] AS groupElems, parsed_rule,  rule_node
+        UNWIND groupElems AS groupElem
+        UNWIND apoc.text.split(groupElem._text, ",") AS groupName
+        MERGE (gg:Group {name: groupName})
+        MERGE (rule_node)-[:BELONGS]->(gg)
 }
 
-// add match 
-CALL (parsed_rule,  rule_node) {
-	WITH [parsed_match IN parsed_rule._children WHERE parsed_match._type = "match"] AS parsed_matches,  rule_node, parsed_rule
-	UNWIND parsed_matches AS mtch
-	SET rule_node.match = mtch._text
-}
-
-// add options
+// add the attributes dynamically
 CALL (parsed_rule, rule_node) {
-	WITH [opts IN parsed_rule._children WHERE opts._type = "options"] AS opts, rule_node, parsed_rule
-	UNWIND opts AS opt
-	SET rule_node.options = coalesce(rule_node.options, []) + opt._text
+  UNWIND parsed_rule._children AS child
+  WITH child, rule_node
+  WHERE child._type IS NOT NULL AND NOT child._type IN ['group', 'if_matched_sid', 'field', 'if_sid']
+
+  WITH rule_node, child._type AS key, 
+       CASE 
+         WHEN child._text IS NOT NULL THEN child._text 
+         ELSE true 
+       END AS value
+
+  CALL apoc.create.setProperty(rule_node, key, value) YIELD node
+  return node
 }
+
+
 // add named fields
 CALL (parsed_rule, rule_node) {
-	// for each field, create a property on the rule like '"Field: myFieldName = "value"'
-	WITH [fields IN parsed_rule._children WHERE fields._type = "field"] AS fields, rule_node, parsed_rule
-	CALL apoc.create.setProperties(rule_node, [field in fields | "Field: " + field.name], [field IN fields | field._text]) yield node
-	RETURN node
+        // for each field, create a property on the rule like '"Field: myFieldName = "value"'
+        WITH [fields IN parsed_rule._children WHERE fields._type = "field"] AS fields, rule_node, parsed_rule
+        CALL apoc.create.setProperties(rule_node, [field in fields | "Field: " + field.name], [field IN fields | field._text]) yield node as dyn_node
+        RETURN dyn_node
 }
 
 RETURN rule_node, parsed_rule
+
+
+
