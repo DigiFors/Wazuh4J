@@ -11,7 +11,7 @@ Hier nochmal alle gewünschten Abfragen. Separate Datei für die Übersicht
 toInteger ist _manchmal_ notwendig...
 
 ```
-match (n:Rule) where toInteger(n.level) > 10 return n.id, n.description, n.level ; 
+match (n:Rule) where toInteger(n.level) > 10 return n.rule_id, n.description, n.level ; 
 
 ```
 
@@ -39,7 +39,7 @@ MATCH (n:Rule)
 WHERE n.parent IS NOT NULL
 AND NOT EXISTS {
   MATCH (r:Rule)
-  WHERE r.id = n.parent
+  WHERE r.rule_id = n.parent
 }
 RETURN n
 ```
@@ -81,10 +81,10 @@ Regeln die dieselbe ID haben, aber sich NICHT ÜBERSCHREIBEN (override=yes ist n
 
 ```
 MATCH (rule:Rule), (rule_duplicate:Rule) 
-WHERE rule.id = rule_duplicate.id and 
+WHERE rule.rule_id = rule_duplicate.rule_id and 
 not elementId(rule) = elementId(rule_duplicate) AND 
 NOT (rule)-[:OVERWRITES]-(rule_duplicate) 
-RETURN rule.id, rule.source_file, rule_duplicate.source_file
+RETURN rule.rule_id, rule.source_file, rule_duplicate.source_file
 ```
 
 ## Kinder > Eltern 
@@ -115,8 +115,8 @@ Ob die Overwrite Property über die Herkunft der Regel entscheidet, ist eine phi
 Wie viele Digifors/Wazuh Regeln (sehe letzter Abschnitt) gibt es in den jeweiligen 10_000-er Blöcken. 
 ```
 MATCH (r:Rule)
-WHERE toInteger(r.id) >= 0 AND toInteger(r.id) <= 1000000
-WITH toInteger(toInteger(r.id) / 10000) AS bucket,
+WHERE toInteger(r.rule_id) >= 0 AND toInteger(r.rule_id) <= 1000000
+WITH toInteger(toInteger(r.rule_id) / 10000) AS bucket,
      CASE WHEN r.source_file CONTAINS "digifors" and r.overwrite is null THEN "digifors" ELSE "wazuh" END AS rule_type
 RETURN bucket * 10000 AS bucket_start,
        (bucket + 1) * 10000 - 1 AS bucket_end,
@@ -160,17 +160,14 @@ Es ist manchmal interessant zu wissen welche Ereignisse zum Triggern einer Regel
 Natürlich muss das ID angepasst werden
 
 ```
-MATCH p = (:Rule {id: "101527"})-[:DEPENDS_ON*]->(r:Rule)
+MATCH p = (:Rule {rule_id: "101527"})-[:DEPENDS_ON*]->(r:Rule)
 WITH nodes(p) AS rules
 UNWIND rules AS r
 WITH DISTINCT r, 
-    [key IN keys(r) WHERE key STARTS WITH 'Field' | key + ': ' + toString(r[key])] +
-     // also include 'match' if it exists
-     CASE WHEN r.match is not null THEN ['match: ' + toString(r.match)] ELSE [] END +
-    // also include 'regex' if it exists
-     CASE WHEN r.regex is not null THEN ['regex: ' + toString(r.regex)] ELSE [] END 
-     AS field_kv_pairs
-RETURN r.id AS rule_id, r.description, apoc.text.join(field_kv_pairs, ' | ') AS field_string;
+      [k IN keys(r) 
+      WHERE NOT k IN ['parent', 'level', 'rule_id', 'description', 'source_file']] AS field_keys
+    WITH [k IN field_keys | k + ': ' + toString(r[k])] AS field_kv_pairs
+RETURN r.rule_id AS rule_id, r.description, apoc.text.join(field_kv_pairs, ' | ') AS field_string;
 
 ```
  
@@ -207,15 +204,12 @@ MATCH p = (s:Rule)-[:DEPENDS_ON*0..]->(r:Rule)
 where toInteger(s.level) > 12
 WITH collect(r) AS rules, s
 UNWIND rules AS r
-WITH      [key IN keys(r) WHERE key STARTS WITH 'Field' | key + ': ' + toString(r[key])] +
-     // also include 'match' if it exists
-     CASE WHEN r.match is not null THEN ['match: ' + toString(r.match)] ELSE [] END +
-    // also include 'regex' if it exists
-     CASE WHEN r.regex is not null THEN ['regex: ' + toString(r.regex)] ELSE [] END 
-     AS field_kv_pairs, s
+WITH  [k IN keys(r) 
+      WHERE NOT k IN ['parent', 'level', 'rule_id', 'description', 'source_file']] AS field_keys
+    WITH [k IN field_keys | k + ': ' + toString(r[k])] AS field_kv_pairs, s
 WITH collect(field_kv_pairs) AS all_field_kv_pairs, s
 WITH apoc.coll.flatten(all_field_kv_pairs) AS flat_fields, s
-RETURN s.id, apoc.text.join(flat_fields, ' | ') AS full_chain_fields;
+RETURN s.rule_id, apoc.text.join(flat_fields, ' | ') AS full_chain_fields;
 
 ```
 
@@ -256,17 +250,14 @@ MATCH p = (s:Rule)-[:DEPENDS_ON*0..]->(r:Rule)
 WHERE toInteger(s.level) > 10
 WITH s, r,
      CASE WHEN r.source_file CONTAINS "digifors" AND r.overwrite IS NULL THEN 'digifors' ELSE 'wazuh' END AS owner,
-     [key IN keys(r) WHERE key STARTS WITH 'Field' | key + ': ' + toString(r[key])] +
-     // also include 'match' if it exists
-     CASE WHEN r.match is not null THEN ['match: ' + toString(r.match)] ELSE [] END +
-    // also include 'regex' if it exists
-     CASE WHEN r.regex is not null THEN ['regex: ' + toString(r.regex)] ELSE [] END 
-     AS field_kv_pairs
+     [k IN keys(r) 
+      WHERE NOT k IN ['parent', 'level', 'rule_id', 'description', 'source_file']] AS field_keys
+    WITH [k IN field_keys | k + ': ' + toString(r[k])] AS field_kv_pairs
 
 WITH s, owner, collect(field_kv_pairs) AS r_field_data
 WITH s, owner, apoc.coll.flatten(r_field_data) AS flat_fields
 RETURN 
-  s.id AS root_rule_id,
+  s.rule_id AS root_rule_id,
   s.level AS level,
   owner AS rule_owner,
   apoc.text.join(flat_fields, ' | ') AS full_chain_fields
@@ -301,17 +292,15 @@ Konkurrierende (Geschwister) Regeln sind die, die unter der selben Bedingungen (
 ```
 MATCH (parent:Rule)<-[:DEPENDS_ON]-(child:Rule)
 WITH parent, child,
-     [key IN keys(child) WHERE key STARTS WITH 'Field' | key + ': ' + toString(child[key])] +
-     // also include 'match' if it exists
-     CASE WHEN child.match is not null THEN ['match: ' + toString(child.match)] ELSE [] END +
-     // also include 'regex' if it exists
-     CASE WHEN child.regex is not null THEN ['regex: ' + toString(child.regex)] ELSE [] END 
-     AS field_kv_pairs
+     [k IN keys(child) 
+      WHERE NOT k IN ['parent', 'level', 'rule_id', 'description', 'source_file']] AS field_keys
+    WITH [k IN field_keys | k + ': ' + toString(child[k])] AS field_kv_pairs, parent, child
 WITH parent, apoc.text.join(field_kv_pairs, ' | ') AS condition_signature, child
-WITH parent, condition_signature, collect(child.id) AS equivalent_children
+WITH parent, condition_signature, collect(child.rule_id) AS equivalent_children
 WHERE size(equivalent_children) > 1
-RETURN parent.id, parent.source_file, condition_signature, equivalent_children
-ORDER BY parent.id;
+RETURN parent.rule_id, parent.source_file, condition_signature, equivalent_children
+ORDER BY parent.rule_id;
+
 
 ```
 
