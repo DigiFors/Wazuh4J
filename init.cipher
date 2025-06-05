@@ -43,6 +43,14 @@ CALL (parsed_rule,  rule_node) {
 	UNWIND parsed_descriptions AS descr
 	SET rule_node.description = descr._text
 }
+
+// add match 
+CALL (parsed_rule,  rule_node) {
+	WITH [parsed_match IN parsed_rule._children WHERE parsed_match._type = "match"] AS parsed_matches,  rule_node, parsed_rule
+	UNWIND parsed_matches AS mtch
+	SET rule_node.match = mtch._text
+}
+
 // add options
 CALL (parsed_rule, rule_node) {
 	WITH [opts IN parsed_rule._children WHERE opts._type = "options"] AS opts, rule_node, parsed_rule
