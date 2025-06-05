@@ -20,6 +20,12 @@ If you want to load xml files from multiple folders just add `-x <another_folder
 4) profit 
 5) Check out Queries.md to find the answers to... eveyrthing!!!
 
+### Quick copy paste:
+```
+NEO4J_URL=bolt://localhost:7687 python3 load.py -x rules/ -x ../SiemCustomWazuhRules/rules/
+```
+./rules sind die wazuh rules, und SiemCustomWazuhRules die gitea rules. 
+
 
 use this query for testing: ` match p=(:Rule {id: "101527"})-[:DEPENDS_ON * ]->(:Rule) return p ; `
 
