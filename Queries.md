@@ -236,6 +236,50 @@ für andere konkrete fragenstellungen muss das prädikat einfach angepasst werde
 </details>
 
 
+<details>
+<summary>Kai's Extra Felder</summary>
+
+Kai möchte diese Ausgabe, aber noch mit LEVEL und rule owner. folgende query liefert diesen datensatz:
+
+```
+MATCH p = (s:Rule)-[:DEPENDS_ON*0..]->(r:Rule)
+WHERE toInteger(s.level) > 10
+WITH s, r,
+     CASE WHEN r.source_file CONTAINS "digifors" AND r.overwrite IS NULL THEN 'digifors' ELSE 'wazuh' END AS owner,
+     [key IN keys(r) WHERE key STARTS WITH 'Field' | key + ': ' + toString(r[key])] AS field_kv_pairs
+WITH s, owner, collect(field_kv_pairs) AS r_field_data
+WITH s, owner, apoc.coll.flatten(r_field_data) AS flat_fields
+RETURN 
+  s.id AS root_rule_id,
+  s.level AS level,
+  owner AS rule_owner,
+  apoc.text.join(flat_fields, ' | ') AS full_chain_fields
+ORDER BY root_rule_id, rule_owner;
+
+
+```
+
+Ausgabe: 
+
+```
+╒════════════╤═════╤══════════╤══════════════════════════════════════════════════════════════════════╕
+│root_rule_id│level│rule_owner│full_chain_fields                                                     │
+╞════════════╪═════╪══════════╪══════════════════════════════════════════════════════════════════════╡
+│"100020"    │"12" │"digifors"│""                                                                    │
+├────────────┼─────┼──────────┼──────────────────────────────────────────────────────────────────────┤
+│"100022"    │"12" │"digifors"│""                                                                    │
+├────────────┼─────┼──────────┼──────────────────────────────────────────────────────────────────────┤
+│"1003"      │"13" │"wazuh"   │""                                                                    │
+├────────────┼─────┼──────────┼──────────────────────────────────────────────────────────────────────┤
+
+```
+
+aktuell fehlen noch die MATCH felder, aber das kommt noch ;)
+
+
+</details>
+
+
 ## Konkurrierende Regeln 
 
 Konkurrierende (Geschwister) Regeln sind die, die unter der selben Bedingungen (HIER: FIELD ATTRIBUTE) getriggert werden. Also welche Regeln die auf den selben Regeln basieren, aber gleiche Prädikate haben. Hier die Query:
