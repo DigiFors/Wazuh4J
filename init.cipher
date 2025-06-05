@@ -21,7 +21,7 @@ MERGE (rule_node)-[:BELONGS]->(g) // assign rule node to group
 WITH parsed_rule,  rule_node
 CALL (parsed_rule,  rule_node) {
         //Filter rule properties to ignore internal ones (those starting with _)
-        WITH [prop_name IN keys(parsed_rule) WHERE NOT prop_name STARTS WITH "_"] AS prop_names, parsed_rule,  rule_node
+        WITH [prop_name IN keys(parsed_rule) WHERE NOT prop_name STARTS WITH "_" and prop_name <> 'id'] AS prop_names, parsed_rule,  rule_node
         //Set remaining properties (like frequency, level, etc.) on the rule node
         CALL apoc.create.setProperties(rule_node, prop_names, [prop_name IN prop_names | parsed_rule[prop_name]]) YIELD node
         RETURN node
@@ -41,7 +41,7 @@ CALL (parsed_rule,  rule_node) {
 CALL (parsed_rule, rule_node) {
   UNWIND parsed_rule._children AS child
   WITH child, rule_node
-  WHERE child._type IS NOT NULL AND NOT child._type IN ['group', 'if_matched_sid', 'field', 'if_sid']
+  WHERE child._type IS NOT NULL AND NOT child._type IN ['group', 'if_matched_sid', 'field', 'if_sid', 'rule']
 
   WITH rule_node, child._type AS key, 
        CASE 
