@@ -164,9 +164,12 @@ MATCH p = (:Rule {id: "101527"})-[:DEPENDS_ON*]->(r:Rule)
 WITH nodes(p) AS rules
 UNWIND rules AS r
 WITH DISTINCT r, 
-     [key IN keys(r) WHERE key STARTS WITH 'Field' | key + ': ' + toString(r[key])] +
+    [key IN keys(r) WHERE key STARTS WITH 'Field' | key + ': ' + toString(r[key])] +
      // also include 'match' if it exists
-     CASE WHEN r.match is not null THEN ['match: ' + toString(r.match)] ELSE [] END AS field_kv_pairs
+     CASE WHEN r.match is not null THEN ['match: ' + toString(r.match)] ELSE [] END +
+    // also include 'regex' if it exists
+     CASE WHEN r.regex is not null THEN ['regex: ' + toString(r.regex)] ELSE [] END 
+     AS field_kv_pairs
 RETURN r.id AS rule_id, r.description, apoc.text.join(field_kv_pairs, ' | ') AS field_string;
 
 ```
@@ -204,9 +207,12 @@ MATCH p = (s:Rule)-[:DEPENDS_ON*0..]->(r:Rule)
 where toInteger(s.level) > 12
 WITH collect(r) AS rules, s
 UNWIND rules AS r
-WITH [key IN keys(r) WHERE key STARTS WITH 'Field' | key + ': ' + toString(r[key])] +
+WITH      [key IN keys(r) WHERE key STARTS WITH 'Field' | key + ': ' + toString(r[key])] +
      // also include 'match' if it exists
-     CASE WHEN r.match is not null THEN ['match: ' + toString(r.match)] ELSE [] END AS field_kv_pairs, s
+     CASE WHEN r.match is not null THEN ['match: ' + toString(r.match)] ELSE [] END +
+    // also include 'regex' if it exists
+     CASE WHEN r.regex is not null THEN ['regex: ' + toString(r.regex)] ELSE [] END 
+     AS field_kv_pairs, s
 WITH collect(field_kv_pairs) AS all_field_kv_pairs, s
 WITH apoc.coll.flatten(all_field_kv_pairs) AS flat_fields, s
 RETURN s.id, apoc.text.join(flat_fields, ' | ') AS full_chain_fields;
@@ -252,7 +258,11 @@ WITH s, r,
      CASE WHEN r.source_file CONTAINS "digifors" AND r.overwrite IS NULL THEN 'digifors' ELSE 'wazuh' END AS owner,
      [key IN keys(r) WHERE key STARTS WITH 'Field' | key + ': ' + toString(r[key])] +
      // also include 'match' if it exists
-     CASE WHEN r.match is not null THEN ['match: ' + toString(r.match)] ELSE [] END AS field_kv_pairs
+     CASE WHEN r.match is not null THEN ['match: ' + toString(r.match)] ELSE [] END +
+    // also include 'regex' if it exists
+     CASE WHEN r.regex is not null THEN ['regex: ' + toString(r.regex)] ELSE [] END 
+     AS field_kv_pairs
+
 WITH s, owner, collect(field_kv_pairs) AS r_field_data
 WITH s, owner, apoc.coll.flatten(r_field_data) AS flat_fields
 RETURN 
@@ -293,7 +303,10 @@ MATCH (parent:Rule)<-[:DEPENDS_ON]-(child:Rule)
 WITH parent, child,
      [key IN keys(child) WHERE key STARTS WITH 'Field' | key + ': ' + toString(child[key])] +
      // also include 'match' if it exists
-     CASE WHEN child.match is not null THEN ['match: ' + toString(child.match)] ELSE [] END AS field_kv_pairs
+     CASE WHEN child.match is not null THEN ['match: ' + toString(child.match)] ELSE [] END +
+     // also include 'regex' if it exists
+     CASE WHEN child.regex is not null THEN ['regex: ' + toString(child.regex)] ELSE [] END 
+     AS field_kv_pairs
 WITH parent, apoc.text.join(field_kv_pairs, ' | ') AS condition_signature, child
 WITH parent, condition_signature, collect(child.id) AS equivalent_children
 WHERE size(equivalent_children) > 1
