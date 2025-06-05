@@ -56,10 +56,25 @@ CALL (parsed_rule, rule_node) {
 
 // add named fields
 CALL (parsed_rule, rule_node) {
-        // for each field, create a property on the rule like '"Field: myFieldName = "value"'
-        WITH [fields IN parsed_rule._children WHERE fields._type = "field"] AS fields, rule_node, parsed_rule
-        CALL apoc.create.setProperties(rule_node, [field in fields | "Field: " + field.name], [field IN fields | field._text]) yield node as dyn_node
-        RETURN dyn_node
+	  // for each field, create a property on the rule like '"Field: myFieldName = "value"'
+	  UNWIND [field IN parsed_rule._children WHERE field._type = "field"] AS field
+
+	  // Set main field content
+	  WITH rule_node, field,
+		   "Field:" + field.name AS main_key,
+		   field._text AS main_value,
+		   apoc.map.removeKey(field, "_type") AS attrs  // get all field attributes
+
+	  CALL apoc.create.setProperty(rule_node, main_key, main_value) YIELD node AS updated1
+
+	  // Now process all other attributes except `name`
+	  WITH updated1, field.name AS field_name, attrs
+	  UNWIND [k IN keys(attrs) WHERE k <> "name"] AS attr_key
+	  WITH updated1, "Field." + field_name + "." + attr_key AS attr_prop, attrs[attr_key] AS attr_val
+
+	  CALL apoc.create.setProperty(updated1, attr_prop, attr_val) YIELD node AS updated2
+	  RETURN updated2
+
 }
 
 RETURN rule_node, parsed_rule
