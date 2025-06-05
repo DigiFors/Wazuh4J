@@ -125,7 +125,12 @@ RETURN bucket * 10000 AS bucket_start,
 ORDER BY bucket_start, rule_type;
 ```
 
-Ausgabe: 
+<details>
+
+
+<summary>Ausgabe: </summary>
+
+
 ```
 ╒════════════╤══════════╤══════════╤══════════╕
 │bucket_start│bucket_end│rule_type │rule_count│
@@ -145,6 +150,8 @@ Ausgabe:
 
 ```
 
+</details>
+
 ## Trigger-Kette einer Regel 
 
 Es ist manchmal interessant zu wissen welche Ereignisse zum Triggern einer Regel führen. Im allg., müssen alle Vorgänger (Eltern, ...) der Regel getriggert werden, und dann sie selbst. Die folgende Query gibt diese Kette sowie alle `Field`-Attribute aus: 
@@ -161,7 +168,9 @@ WITH DISTINCT r,
 RETURN r.id AS rule_id, r.description, apoc.text.join(field_kv_pairs, ' | ') AS field_string;
 
 ```
- Ausgabe: 
+ 
+<details>
+<summary>Ausgabe:</summary> 
 
 ```
 ╒════════╤═════════════════════════════════════════════════════╤════════════════════════════════════════════════════╕
@@ -182,6 +191,8 @@ RETURN r.id AS rule_id, r.description, apoc.text.join(field_kv_pairs, ' | ') AS 
 
 ```
 
+</details>
+
 ## Triggern mehrerer Regeln
 
 für explorative analysen, ist es sinnvoll die trigger-kette mehrer regeln auf einmal zu sehen. also wenn wir die kette aller regeln mit level > 12 sehen wollen, hilft uns die folgende abfrage: 
@@ -200,8 +211,9 @@ RETURN s.id, apoc.text.join(flat_fields, ' | ') AS full_chain_fields;
 
 für andere konkrete fragenstellungen muss das prädikat einfach angepasst werden :)
 
+<details>
+<summary>ausgabe: </summary>
 
-ausgabe: 
 
 ```
 ╒════════╤══════════════════════════════════════════════════════════════════════╕
@@ -221,5 +233,69 @@ ausgabe:
 
 ```
 
+</details>
+
+
+## Konkurrierende Regeln 
+
+Konkurrierende (Geschwister) Regeln sind die, die unter der selben Bedingungen (HIER: FIELD ATTRIBUTE) getriggert werden. Also welche Regeln die auf den selben Regeln basieren, aber gleiche Prädikate haben. Hier die Query:
+
+
+```
+MATCH (parent:Rule)<-[:DEPENDS_ON]-(child:Rule)
+WITH parent, child,
+     [key IN keys(child) WHERE key STARTS WITH 'Field' | key + ': ' + toString(child[key])] AS field_kv_pairs
+WITH parent, apoc.text.join(field_kv_pairs, ' | ') AS condition_signature, child
+WITH parent.id AS parent_id, condition_signature, collect(child.id) AS equivalent_children
+WHERE size(equivalent_children) > 1
+RETURN parent_id, condition_signature, equivalent_children
+ORDER BY parent_id;
+
+```
+
+<details>
+<summary>Ausgabe mit Beispiel</summary>
+
+Ausgabe: 
+```
+╒═════════╤═════════════════════════════════════════════╤═════════════════════════════════════════════╕
+│parent_id│condition_signature                          │equivalent_children                          │
+╞═════════╪═════════════════════════════════════════════╪═════════════════════════════════════════════╡
+│"100021" │"Field: apex.cn2: 1 | Field: apex.cn3: 4"    │["100023", "100026"]                         │
+├─────────┼─────────────────────────────────────────────┼─────────────────────────────────────────────┤
+│"1002"   │""                                           │["51533", "51535", "1009", "2942", "3752"]   │
+├─────────┼─────────────────────────────────────────────┼─────────────────────────────────────────────┤
+│"100901" │""                                           │["100902", "100903"]                         │
+├─────────┼─────────────────────────────────────────────┼─────────────────────────────────────────────┤
+
+```
+
+Die erste Regel 100021 ist unter  9002-digifors_trendmicro-apexone.rules.xml
+
+die beiden regeln sind so definiert: 
+
+```
+  <rule id="100026" level="9">
+    <if_sid>100021</if_sid>
+    <match>Device Access Control</match>
+    <field name="apex.cn2">1</field>
+    <field name="apex.cn3">4</field>
+    <decoded_as>trend-micro</decoded_as>
+    <description>Trend-Micro ApexOne: non-storage USB device blocked</description>
+</rule>
+
+  <rule id="100023" level="9">
+      <if_sid>100021</if_sid>
+      <match>Device Access Control</match>
+      <field name="apex.cn2">1</field>
+      <field name="apex.cn3">4</field>
+      <decoded_as>trend-micro</decoded_as>
+      <description>Trend-Micro ApexOne: non-storage USB device blocked</description>
+  </rule>
+
+
+```
+
+</details>
 
 
