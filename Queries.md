@@ -295,10 +295,10 @@ WITH parent, child,
      // also include 'match' if it exists
      CASE WHEN child.match is not null THEN ['match: ' + toString(child.match)] ELSE [] END AS field_kv_pairs
 WITH parent, apoc.text.join(field_kv_pairs, ' | ') AS condition_signature, child
-WITH parent.id AS parent_id, condition_signature, collect(child.id) AS equivalent_children
+WITH parent, condition_signature, collect(child.id) AS equivalent_children
 WHERE size(equivalent_children) > 1
-RETURN parent_id, condition_signature, equivalent_children
-ORDER BY parent_id;
+RETURN parent.id, parent.source_file, condition_signature, equivalent_children
+ORDER BY parent.id;
 
 ```
 
@@ -310,12 +310,14 @@ Hier muss man auf false positives aufpassen -> felder wie 'action' oder andere s
 
 Ausgabe: 
 ```
-╒═════════╤══════════════════════════════════════════╤══════════════════════════════════════════╕
-│parent_id│condition_signature                       │equivalent_children                       │
-╞═════════╪══════════════════════════════════════════╪══════════════════════════════════════════╡
-│"100021" │"Field: apex.cn3: 4 | Field: apex.cn2: 1 |│["100023", "100026"]                      │
-│         │ match: Device Access Control"            │                                          │
-├─────────┼──────────────────────────────────────────┼──────────────────────────────────────────┤
+╒═════════╤════════════════════════════╤════════════════════════════╤════════════════════════════╕
+│parent.id│parent.source_file          │condition_signature         │equivalent_children         │
+╞═════════╪════════════════════════════╪════════════════════════════╪════════════════════════════╡
+│"100021" │"file://import/9002-digifors│"Field: apex.cn3: 4 | Field:│["100023", "100026"]        │
+│         │_trendmicro-apexone.rules.xm│ apex.cn2: 1 | match: Device│                            │
+│         │l"                          │ Access Control"            │                            │
+├─────────┼────────────────────────────┼────────────────────────────┼────────────────────────────┤
+...
 
 ```
 
