@@ -164,7 +164,9 @@ MATCH p = (:Rule {id: "101527"})-[:DEPENDS_ON*]->(r:Rule)
 WITH nodes(p) AS rules
 UNWIND rules AS r
 WITH DISTINCT r, 
-     [key IN keys(r) WHERE key STARTS WITH 'Field' | key + ': ' + toString(r[key])] AS field_kv_pairs
+     [key IN keys(r) WHERE key STARTS WITH 'Field' | key + ': ' + toString(r[key])] +
+     // also include 'match' if it exists
+     CASE WHEN r.match is not null THEN ['match: ' + toString(r.match)] ELSE [] END AS field_kv_pairs
 RETURN r.id AS rule_id, r.description, apoc.text.join(field_kv_pairs, ' | ') AS field_string;
 
 ```
@@ -202,7 +204,9 @@ MATCH p = (s:Rule)-[:DEPENDS_ON*0..]->(r:Rule)
 where toInteger(s.level) > 12
 WITH collect(r) AS rules, s
 UNWIND rules AS r
-WITH [key IN keys(r) WHERE key STARTS WITH 'Field' | key + ': ' + toString(r[key])] AS field_kv_pairs, s
+WITH [key IN keys(r) WHERE key STARTS WITH 'Field' | key + ': ' + toString(r[key])] +
+     // also include 'match' if it exists
+     CASE WHEN r.match is not null THEN ['match: ' + toString(r.match)] ELSE [] END AS field_kv_pairs, s
 WITH collect(field_kv_pairs) AS all_field_kv_pairs, s
 WITH apoc.coll.flatten(all_field_kv_pairs) AS flat_fields, s
 RETURN s.id, apoc.text.join(flat_fields, ' | ') AS full_chain_fields;
@@ -246,7 +250,9 @@ MATCH p = (s:Rule)-[:DEPENDS_ON*0..]->(r:Rule)
 WHERE toInteger(s.level) > 10
 WITH s, r,
      CASE WHEN r.source_file CONTAINS "digifors" AND r.overwrite IS NULL THEN 'digifors' ELSE 'wazuh' END AS owner,
-     [key IN keys(r) WHERE key STARTS WITH 'Field' | key + ': ' + toString(r[key])] AS field_kv_pairs
+     [key IN keys(r) WHERE key STARTS WITH 'Field' | key + ': ' + toString(r[key])] +
+     // also include 'match' if it exists
+     CASE WHEN r.match is not null THEN ['match: ' + toString(r.match)] ELSE [] END AS field_kv_pairs
 WITH s, owner, collect(field_kv_pairs) AS r_field_data
 WITH s, owner, apoc.coll.flatten(r_field_data) AS flat_fields
 RETURN 
@@ -262,16 +268,14 @@ ORDER BY root_rule_id, rule_owner;
 Ausgabe: 
 
 ```
-╒════════════╤═════╤══════════╤══════════════════════════════════════════════════════════════════════╕
-│root_rule_id│level│rule_owner│full_chain_fields                                                     │
-╞════════════╪═════╪══════════╪══════════════════════════════════════════════════════════════════════╡
-│"100020"    │"12" │"digifors"│""                                                                    │
-├────────────┼─────┼──────────┼──────────────────────────────────────────────────────────────────────┤
-│"100022"    │"12" │"digifors"│""                                                                    │
-├────────────┼─────┼──────────┼──────────────────────────────────────────────────────────────────────┤
-│"1003"      │"13" │"wazuh"   │""                                                                    │
-├────────────┼─────┼──────────┼──────────────────────────────────────────────────────────────────────┤
-
+╒═════════╤══════════════════════════════════════════╤══════════════════════════════════════════╕
+│parent_id│condition_signature                       │equivalent_children                       │
+╞═════════╪══════════════════════════════════════════╪══════════════════════════════════════════╡
+│"100021" │"Field: apex.cn3: 4 | Field: apex.cn2: 1 |│["100023", "100026"]                      │
+│         │ match: Device Access Control"            │                                          │
+├─────────┼──────────────────────────────────────────┼──────────────────────────────────────────┤
+│"100901" │""                                        │["100902", "100903"]                      │
+├─────────┼──────────────────────────────────────────┼──────────────────────────────────────────┤
 ```
 
 aktuell fehlen noch die MATCH felder, aber das kommt noch ;)
