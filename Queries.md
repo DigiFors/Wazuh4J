@@ -248,9 +248,9 @@ MATCH p = (s:Rule)-[:DEPENDS_ON*0..]->(r:Rule)
 WHERE toInteger(s.level) > 10
 WITH s, r,
      CASE WHEN r.source_file CONTAINS "digifors" AND r.overwrite IS NULL THEN 'digifors' ELSE 'wazuh' END AS owner,
-     [k IN keys(r) 
-      WHERE NOT k IN ['parent', 'level', 'rule_id', 'description', 'source_file']] AS field_keys
-    WITH [k IN field_keys | k + ': ' + toString(r[k])] AS field_kv_pairs
+    [k IN keys(r) 
+    WHERE NOT k IN ['parent', 'level', 'rule_id', 'description', 'source_file']] AS field_keys
+    WITH r, [k IN field_keys | k + ': ' + toString(r[k])] AS field_kv_pairs, s, owner
 
 WITH s, owner, collect(field_kv_pairs) AS r_field_data
 WITH s, owner, apoc.coll.flatten(r_field_data) AS flat_fields
@@ -260,7 +260,6 @@ RETURN
   owner AS rule_owner,
   apoc.text.join(flat_fields, ' | ') AS full_chain_fields
 ORDER BY root_rule_id, rule_owner;
-
 
 ```
 
