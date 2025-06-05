@@ -6,7 +6,7 @@ Hier nochmal alle gewünschten Abfragen. Separate Datei für die Übersicht
 - `docker compose down -v` (bevorzugt)
 - `match (n) detach delete n ;`
 
-## Regeln mit best. Level aufrufen: 
+## Regeln mit Level aufrufen: 
 
 toInteger ist _manchmal_ notwendig...
 
@@ -14,6 +14,22 @@ toInteger ist _manchmal_ notwendig...
 match (n:Rule) where toInteger(n.level) > 10 return n.id, n.description, n.level ; 
 
 ```
+
+## Regeln aus einer Gruppe aufrufen 
+Folgender Ausdruck muss an die Regel die zur Gruppe gehören soll angehängt werden: 
+
+```
+(g:Group {name:'fortimail'})-- <REGEL>
+```
+
+Zum Beispiel: wenn wir alle regeln mit level > 10 die zur fortimail group gehören haben wollen, dann hilft uns die folgende query: 
+```
+Match (g:Group {name:'fortimail'})--(n:Rule)
+where toInteger(n.level) > 10 
+return n ; 
+```
+
+
 
 ## Orphaned children
 Regeln, dessen Parent (if_sid oder if_matched_sid) deklariert, aber nicht definiert ist.  
