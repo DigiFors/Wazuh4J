@@ -39,19 +39,10 @@ here are some queries which are commonly used and their SQL equivalents.
 | `match (n:LABEL {name:'test'}) return n;` | `select * from LABEL where name='test' ; ` | query filter | 
 | `match (n:LABEL) where n.name = 'test return n ;` | `select * from LABEL where name = 'test' ; ` | same as above | 
 
-### Orphaned children
-**Get all nodes with a non-existent parent (the specified parent rule does not exist):**
-#TODO: not working correctly
-```cypher
-MATCH (r:Rule)
-WHERE r.parent IS NOT NULL
-  AND NOT (r)-[:DEPENDS_ON {field: "parent"}]->(:Rule {id: r.parent})
-RETURN r.id AS orphanRule, r.parent AS missingParent;
-```
 
 **Get all nodes with no parent specified:**
 ```cypher
-MATCH (r:Rule) WHERE r.parent IS NULL RETURN r;
+MATCH (r:Rule) WHERE r.parents IS NULL RETURN r;
 ```
 
 **Get all node pairs of rules that overwrite eachother:**

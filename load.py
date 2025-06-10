@@ -79,9 +79,10 @@ def load_files_into_neo4j(xml_files):
             cypher_query_add_edges = """
                     // add dependency relationships
                     MATCH (child:Rule)
-                    WHERE child.parent IS NOT NULL
-                    MATCH (parent:Rule {rule_id: child.parent})
-                    MERGE (child)-[:DEPENDS_ON {field: "parent"}]->(parent)
+                    WHERE child.parents IS NOT NULL
+                    UNWIND child.parents AS parent
+                    MATCH (parent_node:Rule {rule_id: parent})
+                    MERGE (child)-[:DEPENDS_ON {field: "parent"}]->(parent_node)
             """
             result = session.run(cypher_query_add_edges)
             result.consume()

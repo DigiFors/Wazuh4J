@@ -7,16 +7,23 @@ MERGE (g:Group {name: groupName}) //create group
 //Extract rules inside the group
 WITH value, g
 UNWIND [c IN value._children WHERE c IS NOT NULL AND c._type = "rule"] AS parsed_rule
-// Extract parent id (if_sid or if_matched_sid value)
-WITH parsed_rule, g,
-         [elem IN parsed_rule._children WHERE elem._type IN ["if_sid", "if_matched_sid"]] AS elems
-WITH parsed_rule, g,
-        CASE WHEN size(elems) > 0 THEN apoc.text.split(elems[0]._text, ",")[0] ELSE NULL END AS parent_id
+
 
 MERGE (rule_node:Rule {rule_id: parsed_rule.id, source_file: $xml_url}) //create rule node
-SET rule_node.parent = parent_id  // save parent ID as a property
 MERGE (rule_node)-[:BELONGS]->(g) // assign rule node to group
 
+WITH parsed_rule, rule_node
+CALL (parsed_rule, rule_node){
+// Extract parent id (if_sid or if_matched_sid value)
+    WITH parsed_rule, rule_node
+    UNWIND [elem IN parsed_rule._children WHERE elem._type IN ["if_sid", "if_matched_sid"] | split(elem._text, [",", " "])] as parents
+    UNWIND parents as parent
+    WITH btrim(parent) AS parent WHERE NOT parent = ""
+    WITH collect(parent) as parents, rule_node
+    WITH apoc.coll.toSet(parents) AS parents, rule_node WHERE size(parents) > 0
+    SET rule_node.parents = parents
+    RETURN parents
+}
 // add the inline rule properties like frequency
 WITH parsed_rule,  rule_node
 CALL (parsed_rule,  rule_node) {

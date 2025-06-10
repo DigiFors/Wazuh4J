@@ -32,16 +32,27 @@ return n ;
 
 
 ## Orphaned children
-Regeln, dessen Parent (if_sid oder if_matched_sid) deklariert, aber nicht definiert ist.  
+Regeln, dessen Parents (if_sid oder if_matched_sid) deklariert, aber nicht definiert sind.  
 
 ```
-MATCH (n:Rule)
-WHERE n.parent IS NOT NULL
-AND NOT EXISTS {
-  MATCH (r:Rule)
-  WHERE r.rule_id = n.parent
+MATCH (child:Rule) 
+WHERE child.parents IS NOT NULL
+  AND NOT any(parent IN child.parents WHERE EXISTS {
+    MATCH (p:Rule {rule_id: parent})
+  })
+RETURN child
+```
+
+Ausgabe der fehlenden Parent Regeln mit zugehörigem child.
+```
+MATCH (child:Rule) 
+WHERE child.parents IS NOT NULL
+UNWIND child.parents AS parent
+WITH child, parent
+WHERE NOT EXISTS {
+  MATCH (p:Rule {rule_id: parent})
 }
-RETURN n
+RETURN DISTINCT child, parent as missing_parent
 ```
 <details>
 <summary>Testing/Replizieren</summary>
