@@ -9,11 +9,7 @@ If you want to dive into the cypher query language: https://neo4j.com/docs/cyphe
 
 ## usage
 1) start the docker container `docker compose up`
-
-    1.1) change the password for neo4j (visit http://localhost:7474 , creds `neo4j:neo4j`) 
-    
-    1.2) Create a .env file from the .env.template. Put the new password there.
-
+    - if you're asked for credentials -> choose the no authentification option
 2) Initiate a python virtual environment with `pipenv shell` and install dependencies with `pipenv update` 
 3) To load wazuh rules into the database, run the python script ON THE SAME HOST AS THE DOCKER CONTAINER: `python3 load.py -x <path_to_folder_with_xml_files>`. <br> 
 If you want to load xml files from multiple folders just add `-x <another_folder_path` for each folder. 
@@ -40,6 +36,8 @@ here are some queries which are commonly used and their SQL equivalents.
 | `match (n) return n ;`                                                      | `select * from <alles>; `      | get everything                                                                      |
 | `match (n:LABEL) return n; `                                                | `select * from LABEL; `        | get all nodes of one type (Node label: Group, Help).                                |
 | `match (n:LABEL) return n.attr1, n.attr2 ;`                                 | `select attr1,attr2 from LABEL; ` | get fields of a certain type                                                        | 
+| `match (n:LABEL {name:'test'}) return n;` | `select * from LABEL where name='test' ; ` | query filter | 
+| `match (n:LABEL) where n.name = 'test return n ;` | `select * from LABEL where name = 'test' ; ` | same as above | 
 
 ### Orphaned children
 **Get all nodes with a non-existent parent (the specified parent rule does not exist):**
