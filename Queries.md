@@ -174,7 +174,7 @@ Natürlich muss das ID angepasst werden
 MATCH p = (:Rule {rule_id: "101527"})-[:DEPENDS_ON*]->(r:Rule)
 WITH nodes(p) AS rules
 UNWIND rules AS r
-WITH DISTINCT r, [k IN keys(r) WHERE NOT k IN ['parent', 'level', 'rule_id', 'description', 'source_file']] AS field_keys
+WITH DISTINCT r, [k IN keys(r) WHERE NOT k IN ['parents', 'level', 'rule_id', 'description', 'source_file']] AS field_keys
 WITH r, [k IN field_keys | k + ': ' + toString(r[k])] AS field_kv_pairs
 RETURN r.rule_id AS rule_id, r.description, apoc.text.join(field_kv_pairs, ' | ') AS field_string
 
@@ -214,7 +214,7 @@ where toInteger(s.level) > 12
 WITH collect(r) AS rules, s
 UNWIND rules AS r
 WITH [k IN keys(r) 
-    WHERE NOT k IN ['parent', 'level', 'rule_id', 'description', 'source_file']] AS field_keys, r, s
+    WHERE NOT k IN ['parents', 'level', 'rule_id', 'description', 'source_file']] AS field_keys, r, s
     WITH r, [k IN field_keys | k + ': ' + toString(r[k])] AS field_kv_pairs, s
 WITH collect(field_kv_pairs) AS all_field_kv_pairs, s
 WITH apoc.coll.flatten(all_field_kv_pairs) AS flat_fields, s
@@ -260,7 +260,7 @@ WHERE toInteger(s.level) > 10
 WITH s, r,
      CASE WHEN r.source_file CONTAINS "digifors" AND r.overwrite IS NULL THEN 'digifors' ELSE 'wazuh' END AS owner,
     [k IN keys(r) 
-    WHERE NOT k IN ['parent', 'level', 'rule_id', 'description', 'source_file']] AS field_keys
+    WHERE NOT k IN ['parents', 'level', 'rule_id', 'description', 'source_file']] AS field_keys
     WITH r, [k IN field_keys | k + ': ' + toString(r[k])] AS field_kv_pairs, s, owner
 
 WITH s, owner, collect(field_kv_pairs) AS r_field_data
@@ -301,7 +301,7 @@ Konkurrierende (Geschwister) Regeln sind die, die unter der selben Bedingungen (
 MATCH (parent:Rule)<-[:DEPENDS_ON]-(child:Rule)
 WITH parent, child,
      [k IN keys(child) 
-      WHERE NOT k IN ['parent', 'level', 'rule_id', 'description', 'source_file']] AS field_keys
+      WHERE NOT k IN ['parents', 'level', 'rule_id', 'description', 'source_file']] AS field_keys
     WITH [k IN field_keys | k + ': ' + toString(child[k])] AS field_kv_pairs, parent, child
 WITH parent, apoc.text.join(field_kv_pairs, ' | ') AS condition_signature, child
 WITH parent, condition_signature, collect(child.rule_id) AS equivalent_children
