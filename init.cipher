@@ -41,18 +41,20 @@ CALL (parsed_rule,  rule_node) {
 CALL (parsed_rule, rule_node) {
   UNWIND parsed_rule._children AS child
   WITH child, rule_node
-  WHERE child._type IS NOT NULL AND NOT child._type IN ['group', 'if_matched_sid', 'field', 'if_sid', 'rule']
-
-  WITH rule_node, child._type AS key, 
-       CASE 
-         WHEN child._text IS NOT NULL THEN child._text 
-         ELSE true 
-       END AS value
-
-  CALL apoc.create.setProperty(rule_node, key, value) YIELD node
+  WHERE child._type IS NOT NULL AND NOT child._type IN ['group', 'if_matched_sid', 'field', 'if_sid', 'rule', 'mitre']
+  WITH rule_node, child
+  UNWIND [k IN keys(child) WHERE k <> "_type"] AS attr_key
+  WITH rule_node,
+        CASE
+                WHEN attr_key = "_text" THEN child._type
+                ELSE child._type + "." + attr_key 
+        END AS attr_prop
+        ,child[attr_key] AS attr_val
+  CALL apoc.create.setProperty(rule_node, attr_prop, attr_val) YIELD node
   return node
 }
 
+//add mitre
 
 // add named fields
 CALL (parsed_rule, rule_node) {
@@ -62,7 +64,13 @@ CALL (parsed_rule, rule_node) {
 	  // Now process all other attributes except `name`
 	  WITH rule_node, field.name AS field_name, field
 	  UNWIND [k IN keys(field) WHERE k <> "name" AND k <> "_type"] AS attr_key
-	  WITH rule_node, "field." + field_name + "." + attr_key AS attr_prop, field[attr_key] AS attr_val
+	  WITH rule_node,
+                "field." + 
+                CASE
+                        WHEN attr_key = "_text" THEN field_name
+                        ELSE field_name + "." + attr_key 
+                END AS attr_prop
+                ,field[attr_key] AS attr_val
 
 	  CALL apoc.create.setProperty(rule_node, attr_prop, attr_val) YIELD node AS updated
 	  RETURN updated
