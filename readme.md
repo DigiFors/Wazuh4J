@@ -51,7 +51,7 @@ MATCH (n)-[:OVERWRITES]->(a) RETURN a, n;
 ```
 **Get all rule id duplicates that do not overwrite eachother:**
 ```cypher
-MATCH (rule:Rule), (rule_duplicate:Rule) WHERE rule.id = rule_duplicate.id and not elementId(rule) = elementId(rule_duplicate) AND NOT (rule)-[:OVERWRITES]-(rule_duplicate) RETURN rule, rule_duplicate
+MATCH (rule:Rule), (rule_duplicate:Rule) WHERE rule.rule_id = rule_duplicate.rule_id and not elementId(rule) = elementId(rule_duplicate) AND NOT (rule)-[:OVERWRITES]-(rule_duplicate) RETURN rule, rule_duplicate
 ```
 
 here is some general introduction into neo4j 
