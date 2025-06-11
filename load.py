@@ -134,6 +134,19 @@ def add_root_to_xml(xml_file):
         # Parse the wrapped content
         root = ET.fromstring(wrapped_content)
 
+        # Enumerate Match statements
+        for group in root.findall('group'):
+            for rule in group.findall('rule'):
+                matches = rule.findall('match')
+                for i, match in enumerate(matches, start=1):
+                    match.tag = f"match_{i}"
+        
+        for rule in root.findall('rule'):
+            matches = rule.findall('match')
+            for i, match in enumerate(matches, start=1):
+                match.tag = f"match_{i}"
+                
+                
         # Write to a new file (or overwrite)
         tree = ET.ElementTree(root)
         tree.write(xml_file, encoding='utf-8', xml_declaration=True)
