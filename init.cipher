@@ -12,8 +12,9 @@ UNWIND [c IN value._children WHERE c IS NOT NULL AND c._type = "rule"] AS parsed
 MERGE (rule_node:Rule {rule_id: parsed_rule.id, source_file: $xml_url}) //create rule node
 MERGE (rule_node)-[:BELONGS]->(g) // assign rule node to group
 
-WITH parsed_rule, rule_node
-CALL (parsed_rule, rule_node){
+
+WITH DISTINCT parsed_rule, rule_node
+OPTIONAL CALL (parsed_rule, rule_node){
 // Extract parent id (if_sid or if_matched_sid value)
     WITH parsed_rule, rule_node
     UNWIND [elem IN parsed_rule._children WHERE elem._type IN ["if_sid", "if_matched_sid"] | split(elem._text, [",", " "])] as parents
@@ -22,11 +23,10 @@ CALL (parsed_rule, rule_node){
     WITH collect(parent) as parents, rule_node
     WITH apoc.coll.toSet(parents) AS parents, rule_node WHERE size(parents) > 0
     SET rule_node.parents = parents
-    RETURN parents
 }
 // add the inline rule properties like frequency
-WITH parsed_rule,  rule_node
-CALL (parsed_rule,  rule_node) {
+WITH DISTINCT parsed_rule,  rule_node
+OPTIONAL CALL (parsed_rule,  rule_node) {
         //Filter rule properties to ignore internal ones (those starting with _)
         WITH [prop_name IN keys(parsed_rule) WHERE NOT prop_name STARTS WITH "_" and prop_name <> 'id'] AS prop_names, parsed_rule,  rule_node
         //Set remaining properties (like frequency, level, etc.) on the rule node
@@ -35,8 +35,8 @@ CALL (parsed_rule,  rule_node) {
 }
 
 // add group relation (add additional groups listed within a rule - a rule may refer to additional groups)
-WITH parsed_rule,  rule_node
-CALL (parsed_rule,  rule_node) {
+WITH DISTINCT parsed_rule,  rule_node
+OPTIONAL CALL (parsed_rule,  rule_node) {
         WITH [gr IN parsed_rule._children WHERE gr._type='group'] AS groupElems, parsed_rule,  rule_node
         UNWIND groupElems AS groupElem
         UNWIND apoc.text.split(groupElem._text, ",") AS groupName
@@ -44,8 +44,9 @@ CALL (parsed_rule,  rule_node) {
         MERGE (rule_node)-[:BELONGS]->(gg)
 }
 
+WITH DISTINCT parsed_rule,  rule_node
 // add the attributes dynamically
-CALL (parsed_rule, rule_node) {
+OPTIONAL CALL (parsed_rule, rule_node) {
   UNWIND parsed_rule._children AS child
   WITH child, rule_node
   WHERE child._type IS NOT NULL AND NOT child._type IN ['group', 'if_matched_sid', 'field', 'if_sid', 'rule', 'mitre']
@@ -63,8 +64,9 @@ CALL (parsed_rule, rule_node) {
 
 //add mitre
 
+WITH DISTINCT parsed_rule,  rule_node
 // add named fields
-CALL (parsed_rule, rule_node) {
+OPTIONAL CALL (parsed_rule, rule_node) {
 	  // for each field, create a property on the rule like '"Field: myFieldName = "value"'
 	  UNWIND [field IN parsed_rule._children WHERE field._type = "field"] AS field
        
@@ -83,8 +85,8 @@ CALL (parsed_rule, rule_node) {
 	  RETURN updated
 
 }
-
-RETURN rule_node, parsed_rule
+WITH DISTINCT rule_node, parsed_rule
+RETURN rule_node
 
 
 
