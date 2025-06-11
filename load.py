@@ -101,8 +101,6 @@ def load_files_into_neo4j(xml_files):
             
 
 
-
-
 def add_root_to_xml(xml_file):
     """
     Wraps xml file with a root element and removes illegal character &
@@ -141,8 +139,44 @@ def add_root_to_xml(xml_file):
         tree.write(xml_file, encoding='utf-8', xml_declaration=True)
     except Exception as e:
         raise Exception(f"Add root to xml file {xml_file} failed: {e}")
-            
+
+def basic_import_checks(xml_files):
     
+    # simple checks using regex
+    rule_count = 0
+    overwrites_count = 0
+    descriptions_count = 0
+    for xml_file in xml_files:
+        with open(xml_file, 'r', encoding='utf-8') as f:
+            xml_content = f.read().strip()
+            matches = re.findall(r'<rule.*?id=.*?>', xml_content)
+            rule_count += len(matches)
+            matches_overwrite = re.findall(r'<rule.*?overwrite=["\']yes["\'].*?>', xml_content)
+            overwrites_count += len(matches_overwrite)
+            matches_description = re.findall(r'<description>', xml_content)
+            descriptions_count += len(matches_description)
+  
+    with GraphDatabase.driver(NEO4J_URI, auth=(NEO4J_USER, NEO4J_PASSWORD)) as driver:
+        with driver.session() as session:
+            res = session.run("MATCH (n:Rule) RETURN COUNT(n)")
+            db_rule_count = res.single().value()
+            res.consume()
+            res = session.run("MATCH (n:Rule) WHERE n.overwrite = 'yes' RETURN COUNT(n)")
+            db_overwrites_count = res.single().value()
+            res.consume()
+
+    if rule_count != db_rule_count:
+        print("!!! The rule count in the db does not match the expected rule count based on simple regex matching. This could be due to mistakes in the init.cipher.")
+        print(f"!!! Rule Count Neo4j: {db_rule_count} Regex: {rule_count}")
+    if overwrites_count != db_overwrites_count:
+        print("!!! The rule count that have the overwrites property set in the db does not match the expected overwriting rule count based on simple regex matching. This could be due to mistakes in the init.cipher.")
+        print(f"!!! Overwrite Count Neo4j: {db_overwrites_count} Regex: {overwrites_count}")
+
+
+        
+                
+
+
 @click.command()
 @click.option('--xml-folders', '-x', multiple=True, type=click.Path(exists=True, readable=True))
 def main(xml_folders):
@@ -153,10 +187,11 @@ def main(xml_folders):
         print("No XML files found.")
         return
 
-
-
     print("Loading files ino database:")
     load_files_into_neo4j(xml_files)
+    
+    basic_import_checks(xml_files)
+    
 
 
 if __name__ == "__main__":
