@@ -134,18 +134,16 @@ def add_root_to_xml(xml_file):
         # Parse the wrapped content
         root = ET.fromstring(wrapped_content)
 
-        # Enumerate Match statements
+        # Sort all children of the rule by first type and then text and then enumerate the match: match_1, match_2 ...
         for group in root.findall('group'):
             for rule in group.findall('rule'):
                 matches = rule.findall('match')
+                if len(matches) > 1:
+                    rule[:] = sorted(rule, key = lambda child: (child.tag, child.text))
+                matches = rule.findall('match')    
                 for i, match in enumerate(matches, start=1):
                     match.tag = f"match_{i}"
-        
-        for rule in root.findall('rule'):
-            matches = rule.findall('match')
-            for i, match in enumerate(matches, start=1):
-                match.tag = f"match_{i}"
-                
+
                 
         # Write to a new file (or overwrite)
         tree = ET.ElementTree(root)
