@@ -1,4 +1,7 @@
 data/
 import/
 venv/
+.venv/
 rules/
+
+.env
