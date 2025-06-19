@@ -1,6 +1,7 @@
 import os
 import re
 import shutil
+import traceback
 from pathlib import Path
 import click
 from dotenv import load_dotenv
@@ -32,15 +33,27 @@ def copy_xml_files_and_get_paths(folder_paths) -> list:
 
     for folder in folder_paths:
         # find all xml files in the folder
-        xml_file_path_objs = [x.resolve() for x in Path(folder).rglob("*.xml")]
+        xml_file_path_objs = [x for x in Path(folder).rglob("*.xml")]
         for file_path_obj in xml_file_path_objs:
             # copy file
-            print(f"Copying {str(file_path_obj)} ...")
-            file_copy_path = shutil.copy(file_path_obj, Path(XML_IMPORT_FOLDER, file_path_obj.name.replace(" ", "")))
+            print(f"Copying {str(file_path_obj.resolve())} ...")
+
+            subpath_in_import_folder = file_path_obj
+            # remove drive letter under windows
+            if file_path_obj.drive != "":
+                subpath_in_import_folder = file_path_obj.relative_to(file_path_obj.drive + "/")
+            # remove white spaces in path because Neo4j cannot handle that
+            subpath_in_import_folder = str(subpath_in_import_folder).replace(" ", "")
+
+            destination_file_path = Path(XML_IMPORT_FOLDER) / subpath_in_import_folder
+            # create subfolders in import folder
+            destination_file_path.parent.mkdir(parents=True, exist_ok=True)
+            # copy xml file to the corresponding import subfolder
+            file_copy_path = shutil.copy(file_path_obj, destination_file_path)
 
             # set permissions for linux 
             os.chmod(file_copy_path, 0o644)
-            add_root_to_xml(Path(XML_IMPORT_FOLDER, file_path_obj.name.replace(" ", "")))
+            add_root_to_xml(destination_file_path)
             # store path to file copy
             xml_file_copies.append(str(Path(file_copy_path).as_posix()))
             
@@ -66,14 +79,14 @@ def load_files_into_neo4j(xml_files):
             for xml_file in xml_files:
                 xml_url = f"{FILE_SERVER_URL}{xml_file}"
                 
-                print("Loading file from", xml_url)
+                print(f"Loading file from {xml_url}")
 
                 try:
                     result = session.run(cypher_query_add_nodes, xml_url=xml_url)
                     result.consume()
                     print(f"Loaded {xml_url} into Neo4j.")
                 except Exception as e:
-                    raise Exception(f"Could not load xml file {xml_url} to Neo4j db: {e}")
+                    raise Exception(f"Could not load xml file {xml_url} to Neo4j db: {traceback.format_exc()}")
 
             # after all nodes are added, add edges
             cypher_query_add_edges = """
@@ -149,7 +162,7 @@ def add_root_to_xml(xml_file):
         tree = ET.ElementTree(root)
         tree.write(xml_file, encoding='utf-8', xml_declaration=True)
     except Exception as e:
-        raise Exception(f"Add root to xml file {xml_file} failed: {e}")
+        raise Exception(f"Add root to xml file {xml_file} failed: {traceback.format_exc()}")
 
 def basic_import_checks(xml_files):
     
