@@ -16,7 +16,7 @@ the following commands help you reset the database when you're testing different
 
 ```
 
-match (n\:Rule) where toInteger(n.level) > 10 return n.rule\_id, n.description, n.level ;
+match (n:Rule) where toInteger(n.level) > 10 return n.rule_id, n.description, n.level ;
 
 ```
 
