@@ -20,6 +20,17 @@ match (n:Rule) where toInteger(n.level) > 10 return n.rule_id, n.description, n.
 
 ```
 
+## Visualizing rules as tree 
+Most of the queries below just return a set of rules without their relations which can make navigating the result set difficult. You can append this Neo4j snippet 
+
+```
+MATCH path = (r)<-[:DEPENDS_ON*0..]-(:Rule)
+RETURN path;
+```
+
+to get a the tree-like visualization of your rules. Here `r` is your ruleset you want to get.  
+
+
 ## Querying Rules from a Group
 You need to 'attach' the following expression to any rule node that belongs to a group:
 
@@ -37,6 +48,15 @@ where toInteger(n.level) > 10
 return n ;
 
 ```
+
+Then, to visualize all rules of a group as a tree, just run this!
+
+```
+Match (g:Group {name:'fortimail'})--(r:Rule)
+MATCH path = (r)<-[:DEPENDS_ON*0..]-(:Rule)
+RETURN path;
+```
+
 
 ## Orphaned Children
 Rules that declare parents (in the `if_sid` or `if_matched_sid` attributes) but where those parents are not defined.
