@@ -12,13 +12,14 @@ If you want to dive into the cypher query language: https://neo4j.com/docs/cyphe
     - if you're asked for credentials -> choose the no authentification option
 2) Initiate a python virtual environment with `pipenv shell` and install dependencies with `pipenv update` 
     - make sure to set the env variable to provide the URL to the Neo4j server!
-3) To load wazuh rules into the database, run the python script: `python3 load.py -x <path_to_folder_with_xml_files>`. <br> 
-If you want to load xml files from multiple folders just add `-x <another_folder_path` for each folder. 
+3) To load wazuh rules into the database, run the python script: `python3 load.py -x <path_to_folder_with_xml_files>`. 
+    - If you want to load xml files from multiple folders just add `-x <another_folder_path` for each folder. 
+    - the provided path can not have backtracking paths, i.e. no `../rules/` ! 
 4) Check out Queries.md to find the answers to... eveyrthing!!!
 
 ### Quick copy paste:
 ```
-NEO4J_URL=bolt://localhost:7687 python3 load.py -x own-rules/ -x ../some-other-rules/rules/
+NEO4J_URL=bolt://localhost:7687 python3 load.py -x own-rules/ -x some-other-rules/rules/
 ```
 
 Feel free to adjust the color and display text of the nodes by clicking on their Label and selecting the color or a display name -> [see here](https://stackoverflow.com/questions/44674646/how-do-i-change-what-appears-on-a-node-in-neo4j).
