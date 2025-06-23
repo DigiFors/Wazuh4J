@@ -142,14 +142,25 @@ return n ;
 ⚠️ WARNING: This returns a lot of results. You'll need additional predicates to navigate this properly.
 
 ## Rule source labeling
-TODO
+It is useful to differentiate the rules by their origin if you want to compare the rules provided by Wazuh with your custom rules. Here, we use the first part of the file path you provided with the -x parameter as the source label. Then we also take the overwrite attribute into account -> if the rule is overwritten, we do not consider it in our analysis. If it's different in your case, change or remove that expression. 
 
-This predicate returns Digifors rules (source: Kai):
-`r.source_file CONTAINS "digifors" and r.overwrite is null`
+this code snippet can be appended to your query to get the source of the rule 
 
-Plainly put: the filename contains “DIGIFORS” and the rule is not overwritten.
+```
+WITH replace(r.source_file, 'file://import/', '') AS trimmed
+WITH split(trimmed, '/') AS parts
+with parts[0] as source
+```
 
-Whether the `overwrite` property determines the origin of a rule is a philosophical question—one you must answer for yourself. When in doubt, just generalize the predicate: `r.source_file CONTAINS "digifors"` and adapt it in the following queries.
+Then, if you want to count how many rules are present in each ruleset, just run this: 
+
+```
+match (r:Rule) where r.overwrite is null
+WITH replace(r.source_file, 'file://import/', '') AS trimmed, r
+WITH split(trimmed, '/') AS parts, r
+with parts[0] as source, r
+return count(r), source ;
+```
 
 ## Rule ID Distribution
 
@@ -157,14 +168,16 @@ Show the distribution of the rule ID allocation by different rule sources.
 
 ```
 MATCH (r:Rule)
-WHERE toInteger(r.rule_id) >= 0 AND toInteger(r.rule_id) <= 1000000
-WITH toInteger(toInteger(r.rule_id) / 10000) AS bucket,
-     CASE WHEN r.source_file CONTAINS "digifors" and r.overwrite is null THEN "digifors" ELSE "wazuh" END AS rule_type
+WHERE toInteger(r.rule_id) >= 0 AND toInteger(r.rule_id) <= 1000000 and r.overwrite is null
+WITH toInteger(toInteger(r.rule_id) / 10000) AS bucket,r
+WITH replace(r.source_file, 'file://import/', '') AS trimmed, bucket
+WITH split(trimmed, '/') AS parts, bucket
+with parts[0] as source, bucket
 RETURN bucket * 10000 AS bucket_start,
        (bucket + 1) * 10000 - 1 AS bucket_end,
-       rule_type,
+       source,
        count(*) AS rule_count
-ORDER BY bucket_start, rule_type;
+ORDER BY bucket_start, source;
 ```
 
 <details>
@@ -245,14 +258,4 @@ WITH parent, condition_signature, collect(child.rule_id) AS equivalent_children
 WHERE size(equivalent_children) > 1
 RETURN parent.rule_id, parent.source_file, condition_signature, equivalent_children
 ORDER BY parent.rule_id;
-```
-
-
-<details>
-<summary>Example Output</summary>
-...
-</details>
-```
-
-```
 ```
