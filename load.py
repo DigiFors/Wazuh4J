@@ -19,9 +19,10 @@ FILE_SERVER_URL = "file://"
 XML_IMPORT_FOLDER = "./import"
 
 
-def copy_xml_files_and_get_paths(folder_paths) -> list:
+def copy_xml_files_and_get_paths(folder_paths, excluded_file_names=None) -> list:
     """
     Copy all XML files to "./import" and return a list of the file_path_obj copy paths.
+    :param excluded_file_names: Optional list of file names to exclude.
     :param folder_path: Path to the folders containing xml files
     :return: A list of paths to the file_path_obj copies
     """
@@ -31,10 +32,15 @@ def copy_xml_files_and_get_paths(folder_paths) -> list:
     # shutil.rmtree(XML_IMPORT_FOLDER)
     # os.makedirs(XML_IMPORT_FOLDER)
 
+    print(f"Searching for XML files in {folder_paths}")
     for folder in folder_paths:
         # find all xml files in the folder
         xml_file_path_objs = [x for x in Path(folder).rglob("*.xml")]
         for file_path_obj in xml_file_path_objs:
+            if excluded_file_names is not None and file_path_obj.name in excluded_file_names:
+                print(f"{file_path_obj} is excluded.")
+                continue
+
             # copy file
             print(f"Copying {str(file_path_obj.resolve())} ...")
 
@@ -56,9 +62,45 @@ def copy_xml_files_and_get_paths(folder_paths) -> list:
             add_root_to_xml(destination_file_path)
             # store path to file copy
             xml_file_copies.append(str(Path(file_copy_path).as_posix()))
-            
 
     return xml_file_copies
+
+
+def get_excluded_rule_files(ossec_conf_paths):
+    excluded_rule_files = []
+
+    print(f"Collecting which rules to exclude from ossec.conf paths {ossec_conf_paths}")
+    for p in ossec_conf_paths:
+        with open(p, "r") as ossec_conf_file:
+            ossec_conf_content = ossec_conf_file.read()
+
+        # Example of an ossec config:
+        # <ossec_config>
+        #   <ruleset>
+        #     <!-- Default ruleset -->
+        #     <decoder_dir>ruleset/decoders</decoder_dir>
+        #     <rule_dir>ruleset/rules</rule_dir>
+        #     <rule_exclude>0215-policy_rules.xml</rule_exclude>
+        #     <rule_exclude>0700-paloalto_rules.xml</rule_exclude> <!-- replaced by custom rules -->
+        #     <decoder_exclude>0100-fortigate_decoders.xml</decoder_exclude> <!-- to be replaced by custom decoders, when ready! -->
+        #     <decoder_exclude>ruleset/decoders/0051-checkpoint-smart1_decoders.xml</decoder_exclude> <!--To use custom decoder for checkpoint -->
+        #     <decoder_exclude>ruleset/decoders/0505-paloalto_decoders.xml</decoder_exclude> <!--To use custom decoder for Palo Alto firewall -->
+        #     <list>etc/lists/audit-keys</list>
+        #     <list>etc/lists/amazon/aws-eventnames</list>
+        #     <list>etc/lists/security-eventchannel</list>
+        #     <!-- User-defined ruleset -->
+        #     <decoder_dir>digifors_custom_rulesets/decoders</decoder_dir>
+        #     <rule_dir>digifors_custom_rulesets/rules</rule_dir>
+        #   </ruleset>
+        # </ossec_config>
+
+        # For each ossec block (usually only one), find all <rule_exclude> entries
+        matches = re.findall(r'<rule_exclude>(.*?)</rule_exclude>', ossec_conf_content, re.DOTALL)
+        excluded_rule_files.extend(match.strip() for match in matches)
+
+    return excluded_rule_files
+
+
 
 
 def load_files_into_neo4j(xml_files):
@@ -202,10 +244,15 @@ def basic_import_checks(xml_files):
 
 
 @click.command()
-@click.option('--xml-folders', '-x', multiple=True, type=click.Path(exists=True, readable=True))
-def main(xml_folders):
-    print(f"Searching for XML files in {xml_folders}")
-    xml_files = copy_xml_files_and_get_paths(xml_folders)
+@click.option('--xml-folders', '-x', multiple=True, type=click.Path(exists=True, readable=True),
+              help='Folder path of xml files containing Wazuh rules.')
+@click.option('--ossec-configs', '-o', multiple=True, type=click.Path(exists=True, readable=True),
+              help="Path to an ossec.conf file to exclude rules.")
+def main(xml_folders, ossec_configs):
+
+    # check readme for rules to exclude
+    excluded_rule_files_names = get_excluded_rule_files(ossec_configs)
+    xml_files = copy_xml_files_and_get_paths(xml_folders, excluded_rule_files_names)
 
     if not xml_files:
         print("No XML files found.")
