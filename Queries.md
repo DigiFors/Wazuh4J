@@ -1,65 +1,77 @@
 # Queries and Answers
 
-Hier nochmal alle gewünschten Abfragen. Separate Datei für die Übersicht 
+This file serves the collectiom of the Neo4j queries which help you analyse the current state and quality of your wazuh rule set. 
+>[!NOTE]
+> the purpose of this collection is to give you all of the necessary tools and pointers of how to find out the things you need to know about. while most of the queries work out-of-the-box, you're *strongly encouraged* to play around and adjust the queries for your needs. 
 
-## Löschen von allen Queries
-- `docker compose down -v` (bevorzugt)
-- `match (n) detach delete n ;`
+## Delete all Queries
 
-## Regeln mit Level aufrufen: 
+the following commands help you reset the database when you're testing different rule sets. 
 
-toInteger ist _manchmal_ notwendig...
+- `docker compose down -v` (reset the docker container - preferred)
+- `match (n) detach delete n ;` (neo4j equivalent of (drop all tables ))
 
-```
-match (n:Rule) where toInteger(n.level) > 10 return n.rule_id, n.description, n.level ; 
+## Querying Rules by Level:
 
-```
-
-## Regeln aus einer Gruppe aufrufen 
-Folgender Ausdruck muss an die Regel die zur Gruppe gehören soll angehängt werden: 
 
 ```
-(g:Group {name:'fortimail'})-- <REGEL>
+
+match (n:Rule) where toInteger(n.level) > 10 return n.rule_id, n.description, n.level ;
+
 ```
 
-Zum Beispiel: wenn wir alle regeln mit level > 10 die zur fortimail group gehören haben wollen, dann hilft uns die folgende query: 
+## Querying Rules from a Group
+You need to 'attach' the following expression to any rule node that belongs to a group:
+
 ```
+
+(g:Group {name:'fortimail'})-- <RULE>
+
+```
+
+For example, if you want all rules with level > 10 that belong to the `fortimail` group, the following query helps:
+```
+
 Match (g:Group {name:'fortimail'})--(n:Rule)
-where toInteger(n.level) > 10 
-return n ; 
-```
-
-
-
-## Orphaned children
-Regeln, dessen Parents (if_sid oder if_matched_sid) deklariert, aber nicht definiert sind.  
+where toInteger(n.level) > 10
+return n ;
 
 ```
-MATCH (child:Rule) 
+
+## Orphaned Children
+Rules that declare parents (in the `if_sid` or `if_matched_sid` attributes) but where those parents are not defined.
+
+```
+
+MATCH (child:Rule)
 WHERE child.parents IS NOT NULL
-  AND NOT any(parent IN child.parents WHERE EXISTS {
-    MATCH (p:Rule {rule_id: parent})
-  })
+AND NOT any(parent IN child.parents WHERE EXISTS {
+MATCH (p:Rule {rule_id: parent})
+})
 RETURN child
+
 ```
 
-Ausgabe der fehlenden Parent Regeln mit zugehörigem child.
+Output missing parent rules along with their corresponding child:
 ```
-MATCH (child:Rule) 
+
+MATCH (child:Rule)
 WHERE child.parents IS NOT NULL
 UNWIND child.parents AS parent
 WITH child, parent
 WHERE NOT EXISTS {
-  MATCH (p:Rule {rule_id: parent})
+MATCH (p:Rule {rule_id: parent})
 }
 RETURN DISTINCT child, parent as missing_parent
+
 ```
+
 <details>
-<summary>Testing/Replizieren</summary>
-Diese (ungültige) Regel erzeugt diesen Zustand: 
-
+<summary>Testing/Replication</summary>
+This (invalid) rule creates the above state:
 
 ```
+
   <rule id="8960099" level="5">
           <if_sid>57190</if_sid>
     <decoded_as>macOS_tccd</decoded_as>
@@ -81,14 +93,13 @@ Diese (ungültige) Regel erzeugt diesen Zustand:
   </rule>
 ```
 
+Just drop this rule in any xml rules file and run the query.
 
-
-diese regel einfach irgendwo einfügen und die query ausführen
 </details>
 
+## Duplicate Rule IDs
 
-## Doppelt-vergebene IDs
-Regeln die dieselbe ID haben, aber sich NICHT ÜBERSCHREIBEN (override=yes ist nicht gesetzt) 
+Rules with the same ID that **do not override** each other (`override=yes` is not set).
 
 ```
 MATCH (rule:Rule), (rule_duplicate:Rule) 
@@ -98,8 +109,9 @@ NOT (rule)-[:OVERWRITES]-(rule_duplicate)
 RETURN rule.rule_id, rule.source_file, rule_duplicate.source_file
 ```
 
-## Kinder > Eltern 
-Welche ELTERN haben die kleinere Rule ID als ihre KINDER 
+## Children > Parents
+
+Which **parents** have a smaller rule ID than their **children**?
 
 ```
 Match (n:Rule) -[:DEPENDS_ON]-> (r:Rule) 
@@ -107,23 +119,22 @@ where toInteger(n.level) > toInteger(r.level)
 return n ; 
 ```
 
-WARNUNG: es sind sehr viele. es sind weitere prädikate notwendig um sich dort zurechtzufiden
+⚠️ WARNING: This returns a lot of results. You'll need additional predicates to navigate this properly.
 
-### Verletzung des Schemas
-Im Umkehrfall (also wo ELTERN > KIND) sind es auch sehr viele. Beispiel: 109180
+## Rule source labeling
+TODO
 
-> HIER MUSS DIE SPITZE KLAMMER UMGEDREHT WERDEN
-
-## Regeln der Digifors
-Folgendes Prädikat gibt die Digifors Regeln aus (Quelle: Kai)
+This predicate returns Digifors rules (source: Kai):
 `r.source_file CONTAINS "digifors" and r.overwrite is null`
 
-In einfacher Sprache: der Dateiname beinhaltet "DIGIFORS" und die Regel ist nicht überschrieben. 
+Plainly put: the filename contains “DIGIFORS” and the rule is not overwritten.
 
-Ob die Overwrite Property über die Herkunft der Regel entscheidet, ist eine philosophische Frage, die jeder für sich selbst beantworten soll. Im Zweifelsfall kann dieses Prädikat einfach verallgemeinert werden: `r.source_file CONTAINS "digifors"` und in folgenden Queries angepasst werden. 
+Whether the `overwrite` property determines the origin of a rule is a philosophical question—one you must answer for yourself. When in doubt, just generalize the predicate: `r.source_file CONTAINS "digifors"` and adapt it in the following queries.
 
-## Verteilung von IDs
-Wie viele Digifors/Wazuh Regeln (sehe letzter Abschnitt) gibt es in den jeweiligen 10_000-er Blöcken. 
+## Rule ID Distribution
+
+Show the distribution of the rule ID allocation by different rule sources.
+
 ```
 MATCH (r:Rule)
 WHERE toInteger(r.rule_id) >= 0 AND toInteger(r.rule_id) <= 1000000
@@ -137,10 +148,7 @@ ORDER BY bucket_start, rule_type;
 ```
 
 <details>
-
-
-<summary>Ausgabe: </summary>
-
+<summary>Output: </summary>
 
 ```
 ╒════════════╤══════════╤══════════╤══════════╕
@@ -158,55 +166,31 @@ ORDER BY bucket_start, rule_type;
 ├────────────┼──────────┼──────────┼──────────┤
 │500000      │509999    │"wazuh"   │6         │
 └────────────┴──────────┴──────────┴──────────┘
-
 ```
 
 </details>
 
-## Trigger-Kette einer Regel 
+## Trigger Chain of a Rule
 
-Es ist manchmal interessant zu wissen welche Ereignisse zum Triggern einer Regel führen. Im allg., müssen alle Vorgänger (Eltern, ...) der Regel getriggert werden, und dann sie selbst. Die folgende Query gibt diese Kette sowie alle `Field`-Attribute aus: 
-
-
-Natürlich muss das ID angepasst werden
+Sometimes it's interesting to see which events trigger a rule. Generally, all predecessors (parents, ...) must be triggered first, then the rule itself. The following query gives the chain of predicates along with all conditions:
 
 ```
-MATCH p = (:Rule {rule_id: "101527"})-[:DEPENDS_ON*]->(r:Rule)
+MATCH p = (:Rule {rule_id: "rule_id"})-[:DEPENDS_ON*]->(r:Rule)
 WITH nodes(p) AS rules
 UNWIND rules AS r
 WITH DISTINCT r, [k IN keys(r) WHERE NOT k IN ['parents', 'level', 'rule_id', 'description', 'source_file']] AS field_keys
 WITH r, [k IN field_keys | k + ': ' + toString(r[k])] AS field_kv_pairs
 RETURN r.rule_id AS rule_id, r.description, apoc.text.join(field_kv_pairs, ' | ') AS field_string
-
 ```
- 
+
 <details>
-<summary>Ausgabe:</summary> 
-
-```
-╒════════╤═════════════════════════════════════════════════════╤════════════════════════════════════════════════════╕
-│rule_id │r.description                                        │field_string                                        │
-╞════════╪═════════════════════════════════════════════════════╪════════════════════════════════════════════════════╡
-│"101527"│"Checkpoint SmartDefense $(attack) by $(attack_info)"│"Field: attack_info: ^Command Injection Over HTTP.*"│
-├────────┼─────────────────────────────────────────────────────┼────────────────────────────────────────────────────┤
-│"101526"│"Checkpoint SmartDefense $(attack) by $(attack_info)"│"Field: attack: ^Web Server Enforcement Violation$" │
-├────────┼─────────────────────────────────────────────────────┼────────────────────────────────────────────────────┤
-│"101521"│"Checkpoint SmartDefense $(attack) $(attack_info)"   │"Field: fw_action: ^Detect$"                        │
-├────────┼─────────────────────────────────────────────────────┼────────────────────────────────────────────────────┤
-│"101520"│"Checkpoint SmartDefense generic Event"              │"Field: product: ^SmartDefense$"                    │
-├────────┼─────────────────────────────────────────────────────┼────────────────────────────────────────────────────┤
-│"64220" │"Checkpoint events."                                 │""                                                  │
-├────────┼─────────────────────────────────────────────────────┼────────────────────────────────────────────────────┤
-│"64220" │"Checkpoint events."                                 │""                                                  │
-└────────┴─────────────────────────────────────────────────────┴────────────────────────────────────────────────────┘
-
-```
-
+<summary>Output:</summary> 
+Rule_id = 101527
 </details>
 
-## Triggern mehrerer Regeln
+## Triggering Multiple Rules
 
-für explorative analysen, ist es sinnvoll die trigger-kette mehrer regeln auf einmal zu sehen. also wenn wir die kette aller regeln mit level > 12 sehen wollen, hilft uns die folgende abfrage: 
+For exploratory analysis, it's helpful to see the trigger chain of **multiple** rules at once. For example, if you want to see the chain of all rules with `level > 12`, this query helps:
 
 ```
 MATCH p = (s:Rule)-[:DEPENDS_ON*0..]->(r:Rule)
@@ -219,83 +203,16 @@ WITH [k IN keys(r)
 WITH collect(field_kv_pairs) AS all_field_kv_pairs, s
 WITH apoc.coll.flatten(all_field_kv_pairs) AS flat_fields, s
 RETURN s.rule_id, apoc.text.join(flat_fields, ' | ') AS full_chain_fields;
-
 ```
-
-für andere konkrete fragenstellungen muss das prädikat einfach angepasst werden :)
 
 <details>
-<summary>ausgabe: </summary>
-
-
-```
-╒════════╤══════════════════════════════════════════════════════════════════════╕
-│s.id    │full_chain_fields                                                     │
-╞════════╪══════════════════════════════════════════════════════════════════════╡
-│"92104" │"Field: win.eventdata.image: (*UTF)\N{U+202E}"                        │
-├────────┼──────────────────────────────────────────────────────────────────────┤
-│"92109" │"Field: win.eventdata.sourceIp: 0:0:0:0:0:0:0:1|127\.0\.0\.1 | Field: │
-│        │win.eventdata.destinationIp: 0:0:0:0:0:0:0:1|127\.0\.0\.1 | Field: win│
-│        │.eventdata.destinationPort: ^3389$ | Field: win.eventdata.destinationP│
-│        │ort: ^3389$"                                                          │
-├────────┼──────────────────────────────────────────────────────────────────────┤
-│"5707"  │""                                                                    │
-├────────┼──────────────────────────────────────────────────────────────────────┤
-│"5714"  │""                                                                    │
-├────────┼──────────────────────────────────────────────────────────────────────┤
-
-```
-
+<summary>Output:</summary>
+...
 </details>
 
+## Competing Rules
 
-<details>
-<summary>Kai's Extra Felder</summary>
-
-Kai möchte diese Ausgabe, aber noch mit LEVEL und rule owner. folgende query liefert diesen datensatz:
-
-```
-MATCH p = (s:Rule)-[:DEPENDS_ON*0..]->(r:Rule)
-WHERE toInteger(s.level) > 10
-WITH s, r,
-     CASE WHEN r.source_file CONTAINS "digifors" AND r.overwrite IS NULL THEN 'digifors' ELSE 'wazuh' END AS owner,
-    [k IN keys(r) 
-    WHERE NOT k IN ['parents', 'level', 'rule_id', 'description', 'source_file']] AS field_keys
-    WITH r, [k IN field_keys | k + ': ' + toString(r[k])] AS field_kv_pairs, s, owner
-
-WITH s, owner, collect(field_kv_pairs) AS r_field_data
-WITH s, owner, apoc.coll.flatten(r_field_data) AS flat_fields
-RETURN 
-  s.rule_id AS root_rule_id,
-  s.level AS level,
-  owner AS rule_owner,
-  apoc.text.join(flat_fields, ' | ') AS full_chain_fields
-ORDER BY root_rule_id, rule_owner;
-
-```
-
-Ausgabe: 
-
-```
-╒════════════╤═════╤══════════╤══════════════════════════════════════════════════════════════════════╕
-│root_rule_id│level│rule_owner│full_chain_fields                                                     │
-╞════════════╪═════╪══════════╪══════════════════════════════════════════════════════════════════════╡
-│"100020"    │"12" │"digifors"│"match: Virus/Malware gefunden"                                       │
-├────────────┼─────┼──────────┼──────────────────────────────────────────────────────────────────────┤
-│"100022"    │"12" │"digifors"│"match: AV:Access denied"                                             │
-├────────────┼─────┼──────────┼──────────────────────────────────────────────────────────────────────┤
-```
-
-aktuell fehlen noch die MATCH felder, aber das kommt noch ;)
-
-
-</details>
-
-
-## Konkurrierende Regeln 
-
-Konkurrierende (Geschwister) Regeln sind die, die unter der selben Bedingungen (HIER: FIELD ATTRIBUTE) getriggert werden. Also welche Regeln die auf den selben Regeln basieren, aber gleiche Prädikate haben. Hier die Query:
-
+Competing (sibling) rules are those triggered under the **same conditions**. That means rules that are based on the same parent but have identical predicates. Here’s the query:
 
 ```
 MATCH (parent:Rule)<-[:DEPENDS_ON]-(child:Rule)
@@ -308,55 +225,14 @@ WITH parent, condition_signature, collect(child.rule_id) AS equivalent_children
 WHERE size(equivalent_children) > 1
 RETURN parent.rule_id, parent.source_file, condition_signature, equivalent_children
 ORDER BY parent.rule_id;
-
-
 ```
-
-Hier muss man auf false positives aufpassen -> felder wie 'action' oder andere statischen felder werden hier erstmal nicht betrachtet
 
 
 <details>
-<summary>Ausgabe mit Beispiel</summary>
-
-Ausgabe: 
-```
-╒═════════╤════════════════════════════╤════════════════════════════╤════════════════════════════╕
-│parent.id│parent.source_file          │condition_signature         │equivalent_children         │
-╞═════════╪════════════════════════════╪════════════════════════════╪════════════════════════════╡
-│"100021" │"file://import/9002-digifors│"Field: apex.cn3: 4 | Field:│["100023", "100026"]        │
-│         │_trendmicro-apexone.rules.xm│ apex.cn2: 1 | match: Device│                            │
-│         │l"                          │ Access Control"            │                            │
-├─────────┼────────────────────────────┼────────────────────────────┼────────────────────────────┤
+<summary>Example Output</summary>
 ...
-
-```
-
-Die erste Regel 100021 ist unter  9002-digifors_trendmicro-apexone.rules.xml
-
-die beiden regeln sind so definiert: 
-
-```
-  <rule id="100026" level="9">
-    <if_sid>100021</if_sid>
-    <match>Device Access Control</match>
-    <field name="apex.cn2">1</field>
-    <field name="apex.cn3">4</field>
-    <decoded_as>trend-micro</decoded_as>
-    <description>Trend-Micro ApexOne: non-storage USB device blocked</description>
-</rule>
-
-  <rule id="100023" level="9">
-      <if_sid>100021</if_sid>
-      <match>Device Access Control</match>
-      <field name="apex.cn2">1</field>
-      <field name="apex.cn3">4</field>
-      <decoded_as>trend-micro</decoded_as>
-      <description>Trend-Micro ApexOne: non-storage USB device blocked</description>
-  </rule>
-
-
-```
-
 </details>
+```
 
-
+```
+```
