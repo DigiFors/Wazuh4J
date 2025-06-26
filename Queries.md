@@ -209,6 +209,7 @@ Sometimes it's interesting to see which events trigger a rule. Generally, all pr
 
 ```
 MATCH p = (:Rule {rule_id: "rule_id"})-[:DEPENDS_ON*]->(r:Rule)
+where r.overwrite is null
 WITH nodes(p) AS rules
 UNWIND rules AS r
 WITH DISTINCT r, [k IN keys(r) WHERE NOT k IN ['parents', 'level', 'rule_id', 'description', 'source_file']] AS field_keys
@@ -227,7 +228,7 @@ For exploratory analysis, it's helpful to see the trigger chain of **multiple** 
 
 ```
 MATCH p = (s:Rule)-[:DEPENDS_ON*0..]->(r:Rule)
-where toInteger(s.level) > 12
+where toInteger(s.level) > 12 and r.overwrite is null
 WITH collect(r) AS rules, s
 UNWIND rules AS r
 WITH [k IN keys(r) 
