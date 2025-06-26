@@ -57,6 +57,16 @@ MATCH path = (r)<-[:DEPENDS_ON*0..]-(:Rule)
 RETURN path;
 ```
 
+## Cyclic dependency
+Rules which depend on themselves or build a cycle. 
+
+```
+MATCH (s:Rule)-[:DEPENDS_ON*]->(r:Rule)
+where s.rule_id = r.rule_id
+return s
+
+```
+
 
 ## Orphaned Children
 Rules that declare parents (in the `if_sid` or `if_matched_sid` attributes) but where those parents are not defined.
