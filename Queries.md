@@ -249,13 +249,16 @@ Competing (sibling) rules are those triggered under the **same conditions**. Tha
 
 ```
 MATCH (parent:Rule)<-[:DEPENDS_ON]-(child:Rule)
-WITH parent, child,
+OPTIONAL MATCH (child)-[:BELONGS]->(g:Group)
+WITH parent, child, collect(DISTINCT g) AS groupSet,
      [k IN keys(child) 
       WHERE NOT k IN ['parents', 'level', 'rule_id', 'description', 'source_file']] AS field_keys
-    WITH [k IN field_keys | k + ': ' + toString(child[k])] AS field_kv_pairs, parent, child
-WITH parent, apoc.text.join(field_kv_pairs, ' | ') AS condition_signature, child
-WITH parent, condition_signature, collect(child.rule_id) AS equivalent_children
+WITH parent, child, groupSet,
+     [k IN field_keys | k + ': ' + toString(child[k])] AS field_kv_pairs
+WITH parent, apoc.text.join(field_kv_pairs, ' | ') AS condition_signature, child, groupSet
+WITH parent, condition_signature, groupSet, collect(child.rule_id) AS equivalent_children
 WHERE size(equivalent_children) > 1
-RETURN parent.rule_id, parent.source_file, condition_signature, equivalent_children
+RETURN parent.rule_id, parent.source_file, equivalent_children, condition_signature
 ORDER BY parent.rule_id;
+
 ```
