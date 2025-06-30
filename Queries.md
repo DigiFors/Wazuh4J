@@ -56,6 +56,33 @@ Match (g:Group {name:'fortimail'})--(r:Rule)
 MATCH path = (r)<-[:DEPENDS_ON*0..]-(:Rule)
 RETURN path;
 ```
+## Searching for events
+To find which rules are triggered under a given condition, use this query: 
+
+```
+match (r :Rule ) 
+with r, [k IN keys(r) WHERE NOT k IN ['parents', 'level', 'rule_id', 'description', 'source_file']] AS field_keys
+WITH r, [k IN field_keys | k + ': ' + toString(r[k])] AS field_kv_pairs
+with r, apoc.text.join(field_kv_pairs, ' | ') AS field_string
+where field_string contains "condition" 
+return r, field_string; 
+
+```
+There you need to adjust the `condition` string. 
+
+### Viewing chains 
+If you want to see all rules affected by a certain condition, **including the children** use this query: 
+
+```
+match p=(r :Rule)<-[:DEPENDS_ON*]-(c:Rule) 
+with p,r, [k IN keys(r) WHERE NOT k IN ['parents', 'level', 'rule_id', 'description', 'source_file']] AS field_keys
+WITH p,r, [k IN field_keys | k + ': ' + toString(r[k])] AS field_kv_pairs
+with p,r, apoc.text.join(field_kv_pairs, ' | ') AS field_string
+where field_string contains "condition" 
+return p, field_string; 
+
+```
+
 
 ## Cyclic dependency
 Rules which depend on themselves or build a cycle. 
