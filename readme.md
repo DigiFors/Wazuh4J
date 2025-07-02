@@ -10,17 +10,16 @@ If you want to dive into the cypher query language: https://neo4j.com/docs/cyphe
 ## Usage
 1) Start the docker container `docker compose up`
     - If you're asked for credentials, choose the no authentification option.
-2) Initiate a python virtual environment with `pipenv shell` and install dependencies with `pipenv update` 
-    - make sure to set the env variable to provide the URL to the Neo4j server!
+2) Install dependencies: `pip install -r requirements.txt`
 3) To load wazuh rules into the database, run the python script: `python3 load.py -x <path_to_folder_with_xml_files>`. 
-    - If you want to load xml files from multiple folders, just add `-x <another_folder_path` for each folder. 
+    - For multiple rulesets, just add `-x <another_folder_path` for each folder. 
     - If you want to specify rules excluded by ossec.conf, then add `-o <ossec_conf_path>` (can be used multiple times). If your ossec config is located inside a readme document, please copy the ossec_conf block (including the `<ossec_config>` tag) to an `ossec.conf` file in advance.
     - [!] Note: A provided path cannot have backtracking paths, i.e. no `../rules/` !
 4) Check out Queries.md to find the answers to... everything!!!
 
 ### Quick copy paste:
 ```
-NEO4J_URL=bolt://localhost:7687 python3 load.py -x own-rules/ -x some-other-rules/rules/ -o path/to/ossec.conf
+python3 load.py -x own-rules/ -x some-other-rules/rules/ -o path/to/ossec.conf
 ```
 
 Feel free to adjust the color and display text of the nodes by clicking on their label and selecting the color or a display name -> [see here](https://stackoverflow.com/questions/44674646/how-do-i-change-what-appears-on-a-node-in-neo4j).
