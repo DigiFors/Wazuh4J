@@ -3,6 +3,9 @@ import/
 venv/
 .venv/
 rules/
+conf/
 
 .env
 .swp
+.xml
+.tar.gz

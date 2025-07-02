@@ -4,16 +4,11 @@ import shutil
 import traceback
 from pathlib import Path
 import click
-from dotenv import load_dotenv
 from neo4j import GraphDatabase
 import xml.etree.ElementTree as ET
 
-load_dotenv()
-
 # Neo4j connection details
-NEO4J_URI = os.getenv("NEO4J_URL")
-NEO4J_USER = os.getenv("NEO4J_USER")
-NEO4J_PASSWORD = os.getenv("NEO4J_PASSWORD")
+NEO4J_URI = "bolt://localhost:7687"
 
 FILE_SERVER_URL = "file://"
 XML_IMPORT_FOLDER = "./import"
@@ -109,7 +104,7 @@ def load_files_into_neo4j(xml_files):
     :param xml_files:
     :return:
     """
-    with GraphDatabase.driver(NEO4J_URI, auth=(NEO4J_USER, NEO4J_PASSWORD)) as driver:
+    with GraphDatabase.driver(NEO4J_URI) as driver:
         with driver.session() as session:
 
             print("Load cipher database init script...")
