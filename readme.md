@@ -8,12 +8,22 @@ More information about it can be found here: https://medium.com/@balajeraam/neo4
 If you want to dive into the cypher query language: https://neo4j.com/docs/cypher-manual/current/introduction/
 
 ## Usage
-1) Start the docker container `docker compose up`
+
+```
+Usage: load.py [OPTIONS]
+
+Options:
+  -x, --xml-folders PATH    Folder path of xml files containing Wazuh rules.
+  -o, --ossec-configs PATH  Path to an ossec.conf file to exclude rules (optional).
+  --help                    Show this message and exit.
+```
+
+1) Start the neo4j docker container `docker compose up`
     - If you're asked for credentials, choose the *no authentification* option.
 2) Install dependencies: `pip install -r requirements.txt`
 3) To load wazuh rules into the database, run the python script: `python3 load.py -x <path_to_folder_with_xml_files>`. 
     - For multiple rulesets, just add `-x <another_folder_path` for each folder. 
-    - If you want to specify rules excluded by ossec.conf, then add `-o <ossec_conf_path>` (can be used multiple times). If your ossec config is located inside a readme document, please copy the ossec_conf block (including the `<ossec_config>` tag) to an `ossec.conf` file in advance.
+    - If you want to specify rules excluded by ossec.conf, then add `-o <ossec_conf_path>` 
     - [!] Note: A provided path cannot have backtracking paths, i.e. no `../rules/` !
 4) Check out Queries.md to find the answers to... everything!!!
 
