@@ -9,7 +9,7 @@ If you want to dive into the cypher query language: https://neo4j.com/docs/cyphe
 
 ## Usage
 1) Start the docker container `docker compose up`
-    - If you're asked for credentials, choose the no authentification option.
+    - If you're asked for credentials, choose the *no authentification* option.
 2) Install dependencies: `pip install -r requirements.txt`
 3) To load wazuh rules into the database, run the python script: `python3 load.py -x <path_to_folder_with_xml_files>`. 
     - For multiple rulesets, just add `-x <another_folder_path` for each folder. 
