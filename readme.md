@@ -14,18 +14,70 @@ Usage: load.py [OPTIONS]
 
 Options:
   -x, --xml-folders PATH    Folder path of xml files containing Wazuh rules.
-  -o, --ossec-configs PATH  Path to an ossec.conf file to exclude rules (optional).
-  --help                    Show this message and exit.
+                            It must not be an absolute path or contain
+                            backtracking elements.
+  -o, --ossec-configs PATH  Path to an ossec.conf file to exclude rules.
+  --help                    Show this message and exit.                 
 ```
 
-1) Start the neo4j docker container `docker compose up`
-    - If you're asked for credentials, choose the *no authentification* option.
-2) Install dependencies: `pip install -r requirements.txt`
-3) To load wazuh rules into the database, run the python script: `python3 load.py -x <path_to_folder_with_xml_files>`. 
-    - For multiple rulesets, just add `-x <another_folder_path` for each folder. 
-    - If you want to specify rules excluded by ossec.conf, then add `-o <ossec_conf_path>` 
-    - [!] Note: A provided path cannot have backtracking paths, i.e. no `../rules/` !
-4) Check out Queries.md to find the answers to... everything!!!
+### 1) Start the neo4j docker container 
+```
+docker compose up
+```
+
+- if you're asked for credentials, choose the *no authentification* option.
+
+### 2) Install dependencies: 
+
+```pip install -r requirements.txt```
+
+
+### 3) Get the wazuh rules 
+Load the wazuh rules grouped by origin into the current directory 
+
+> [!Note]
+> Place the rule folders in the current directory, rather than provide the absolute path to the files. 
+
+The following folder structure is most recommended
+```
+$ tree
+.
+├── windows-rules                                         <---
+│   ├── 110000_windows_kerberos_rules.xml
+│   ├── 110050_windows_ldap_rules.xml
+│   ├── 110100_windows_smb_rules.xml
+├── docker-compose.yml
+├── import
+├── init.cipher
+├── load.py
+├── Queries.md
+├── readme.md
+├── requirements.txt
+├── rules                                                 <---
+│   ├── 100000_wazuh-default_override_rules.xml
+│   ├── 100020_own_trendmicro-apexone_rules.xml
+│   ├── 100050_own_cisco-asa_additional_rules.xml
+├── soc-fortress                                          <---
+│   ├── 107700_windows_plug-n-play_rules.xml
+│   ├── 103400_windows_taskscheduler_rules.xml
+│   ├── 103300_sophos-edr_integration_rules.xml
+└── wazuh-rules                                           <---
+│   ├── 100300_linux_clamav_rules.xml
+│   ├── 102400_forticlient_rules.xml
+│   ├── 102900_checkpoint-smart1.rules.xml
+```
+
+
+### 3) Load wazuh rules into the database
+Run the python script: 
+```
+python3 load.py -x <path_to_folder_with_xml_files>
+```
+
+- For multiple rulesets, just add `-x <another_folder_path` for each folder. 
+- If you want to specify rules excluded by ossec.conf, then add `-o <ossec_conf_path>` 
+
+### 4) Check out Queries.md to find the answers to... everything!!!
 
 ### Quick copy paste:
 ```
