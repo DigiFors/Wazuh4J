@@ -217,7 +217,7 @@ def basic_import_checks(xml_files):
             matches_description = re.findall(r'<description>', xml_content)
             descriptions_count += len(matches_description)
   
-    with GraphDatabase.driver(NEO4J_URI, auth=(NEO4J_USER, NEO4J_PASSWORD)) as driver:
+    with GraphDatabase.driver(NEO4J_URI) as driver:
         with driver.session() as session:
             res = session.run("MATCH (n:Rule) RETURN COUNT(n)")
             db_rule_count = res.single().value()
