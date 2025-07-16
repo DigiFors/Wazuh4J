@@ -245,6 +245,22 @@ def basic_import_checks(xml_files):
               help="Path to an ossec.conf file to exclude rules.")
 def main(xml_folders, ossec_configs):
 
+    # safety checks
+    absolute = [x for x in xml_folders if os.path.abspath(x)]
+    if len(absolute) > 0:
+        print("No absolute paths allowed in the -x parameter. Please copy the folders into the current directory.\n")
+        for ab in absolute: 
+            print(f"cp -r {ab} . ")
+        return
+
+
+    backtrace = [x for x in xml_folders if x.contains("..")]
+    if len(backtrace) > 0:
+        print("No backtracing paths allowed in the -x parameter. Please copy the folders into the current directory.\n")
+        for ab in backtrace: 
+            print(f"cp -r {ab} . ")
+        return
+
     # check readme for rules to exclude
     excluded_rule_files_names = get_excluded_rule_files(ossec_configs)
     xml_files = copy_xml_files_and_get_paths(xml_folders, excluded_rule_files_names)
@@ -257,7 +273,6 @@ def main(xml_folders, ossec_configs):
     load_files_into_neo4j(xml_files)
     
     basic_import_checks(xml_files)
-    
 
 
 if __name__ == "__main__":
