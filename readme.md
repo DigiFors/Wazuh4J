@@ -24,7 +24,7 @@ Options:
 ```
 docker compose up
 ```
-
+- The *neo4j* server runs at `http://localhost:7474`  
 - if you're asked for credentials, choose the *no authentification* option.
 
 ### 2) Install dependencies: 
@@ -38,7 +38,9 @@ Load the wazuh rules grouped by origin into the current directory
 > [!Note]
 > Place the rule folders in the current directory, rather than provide the absolute path to the files. 
 
-The following folder structure is most recommended
+
+
+This is an example of a recommended folder structure
 ```
 $ tree
 .
@@ -68,7 +70,7 @@ $ tree
 ```
 
 
-### 3) Load wazuh rules into the database
+### 4) Load wazuh rules into the database
 Run the python script: 
 ```
 python3 load.py -x <path_to_folder_with_xml_files>
@@ -77,12 +79,12 @@ python3 load.py -x <path_to_folder_with_xml_files>
 - For multiple rulesets, just add `-x <another_folder_path` for each folder. 
 - If you want to specify rules excluded by ossec.conf, then add `-o <ossec_conf_path>` 
 
-### 4) Check out Queries.md to find the answers to... everything!!!
+#### Quick copy paste:
+```
+python3 load.py -x rules/ -o path/to/ossec.conf
+```
 
-### Quick copy paste:
-```
-python3 load.py -x own-rules/ -x some-other-rules/rules/ -o path/to/ossec.conf
-```
+### 4) Check out Queries.md to find the answers to... everything!!!
 
 Feel free to adjust the color and display text of the nodes by clicking on their label and selecting the color or a display name -> [see here](https://stackoverflow.com/questions/44674646/how-do-i-change-what-appears-on-a-node-in-neo4j).
 
