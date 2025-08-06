@@ -1,5 +1,5 @@
 # Wazuh4j
-This repository contains everything necessary for 1) importing 2) visualizing and 3) analysing the wazuh rule set.  
+This repository contains everything necessary for importing, visualizing and analysing the wazuh rule set.  
 
 ## Neo4j
 The engine of this project is neo4j. It is a graph database perfectly tailored to this problem. 
@@ -20,25 +20,33 @@ Options:
   --help                    Show this message and exit.                 
 ```
 
-### 1) Start the neo4j docker container 
+## Prepation to use This Project:
+
+### - Clone the repository:
 ```
-docker compose up
+git clone <repository-url>
+cd wazuh4j
 ```
 
-- if you're asked for credentials, choose the *no authentification* option.
+### - Install docker 
+- Download: https://www.docker.com/get-started/
 
-### 2) Install dependencies: 
+### - (Recommended) Create a Python virtual environment:
+- Use a virtual environment to avoid dependency conflicts
 
-```pip install -r requirements.txt```
+### - Install Python dependencies: 
 
+```
+pip install -r requirements.txt
+```
 
-### 3) Get the wazuh rules 
-Load the wazuh rules grouped by origin into the current directory 
+### - Get the wazuh rules 
+- Load the wazuh rules grouped by origin into the current directory 
 
 > [!Note]
 > Place the rule folders in the current directory, rather than provide the absolute path to the files. 
 
-The following folder structure is most recommended
+Folder Structure - Example (The most recommended folder structure):
 ```
 $ tree
 .
@@ -68,28 +76,35 @@ $ tree
 ```
 
 
-### 3) Load wazuh rules into the database
+
+### 1) Start the neo4j docker container
+
+```
+docker compose up
+```
+
+### 2) Load wazuh rules into the database
 Run the python script: 
 ```
 python3 load.py -x <path_to_folder_with_xml_files>
+```
+#### Or for Windows:
+```
+python load.py -x <path_to_folder_with_xml_files>
 ```
 
 - For multiple rulesets, just add `-x <another_folder_path` for each folder. 
 - If you want to specify rules excluded by ossec.conf, then add `-o <ossec_conf_path>` 
 
-### 4) Check out Queries.md to find the answers to... everything!!!
-
-### Quick copy paste:
-```
-python3 load.py -x own-rules/ -x some-other-rules/rules/ -o path/to/ossec.conf
-```
+### 3) Explore and Analyze
+- The *neo4j* server runs at ```http://localhost:7474```
+- If you're asked for credentials, choose the *no authentification* option.
+- Start exploring using *Queries.md* to find the answers to... everything!!!
 
 Feel free to adjust the color and display text of the nodes by clicking on their label and selecting the color or a display name -> [see here](https://stackoverflow.com/questions/44674646/how-do-i-change-what-appears-on-a-node-in-neo4j).
 
-
-
 ## FAQ (Frequently Asked QUERIES)
-here are some queries which are commonly used and their SQL equivalents. 
+Here are some queries which are commonly used and their SQL equivalents. 
 
 | NEO4J                                                                       | SQL                            | Semantics                                                                           |
 |-----------------------------------------------------------------------------|--------------------------------|-------------------------------------------------------------------------------------|
@@ -98,5 +113,5 @@ here are some queries which are commonly used and their SQL equivalents.
 | `match (n:LABEL) return n; `                                                | `select * from LABEL; `        | get all nodes of one type (Node label: Group, Help).                                |
 | `match (n:LABEL) return n.attr1, n.attr2 ;`                                 | `select attr1,attr2 from LABEL; ` | get fields of a certain type                                                        | 
 | `match (n:LABEL {name:'test'}) return n;` | `select * from LABEL where name='test' ; ` | query filter | 
-| `match (n:LABEL) where n.name = 'test return n ;` | `select * from LABEL where name = 'test' ; ` | same as above | 
+| `match (n:LABEL) where n.name = 'test return n ;` | `select * from LABEL where name = 'test' ; ` | same as above |
 
