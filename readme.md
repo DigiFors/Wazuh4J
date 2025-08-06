@@ -20,30 +20,33 @@ Options:
   --help                    Show this message and exit.                 
 ```
 
-## Prepation to use This Project:
+## Requirements to use This Project
 
-### - Clone the repository:
+###  Clone the repository
 ```
-git clone <repository-url>
+git clone https://github.com/DigiFors/Wazuh4J
 cd wazuh4j
 ```
 
-### - Install docker 
+###  Install docker 
 - Download: https://www.docker.com/get-started/
 
-### - (Recommended) Create a Python virtual environment:
+###  (Recommended) Create a Python virtual environment
+```
+python -m venv venv
+```
 - Use a virtual environment to avoid dependency conflicts
 
-### - Install Python dependencies: 
+###  Install Python dependencies
 
 ```
 pip install -r requirements.txt
 ```
 
-### - Get the wazuh rules 
+###  Get the wazuh rules 
 - Load the wazuh rules grouped by origin into the current directory 
 
-> [!Note]
+> [!Warning]
 > Place the rule folders in the current directory, rather than provide the absolute path to the files. 
 
 Folder Structure - Example (The most recommended folder structure):
@@ -86,17 +89,17 @@ docker compose up
 ### 2) Load wazuh rules into the database
 Run the python script: 
 ```
-python3 load.py -x <path_to_folder_with_xml_files>
-```
-#### Or for Windows:
-```
 python load.py -x <path_to_folder_with_xml_files>
 ```
 
 - For multiple rulesets, just add `-x <another_folder_path` for each folder. 
 - If you want to specify rules excluded by ossec.conf, then add `-o <ossec_conf_path>` 
 
-### 3) Explore and Analyze
+### Quick copy paste:
+```
+python load.py -x rules/ -o path/to/ossec.conf
+```
+
 - The *neo4j* server runs at ```http://localhost:7474```
 - If you're asked for credentials, choose the *no authentification* option.
 - Start exploring using *Queries.md* to find the answers to... everything!!!
