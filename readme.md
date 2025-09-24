@@ -44,6 +44,7 @@ Options:
 ```shell
 git clone https://github.com/DigiFors/Wazuh4J
 cd wazuh4j
+```
 
 
 ###  Install docker 
