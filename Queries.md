@@ -1,8 +1,21 @@
 # Queries and Answers
 
-This file serves the collectiom of the Neo4j queries which help you analyse the current state and quality of your wazuh rule set. 
+This file serves as a collection of the Neo4j queries which help you analyse the current state and quality of your wazuh rule set. 
 >[!NOTE]
 > the purpose of this collection is to give you all of the necessary tools and pointers of how to find out the things you need to know about. while most of the queries work out-of-the-box, you're *strongly encouraged* to play around and adjust the queries for your needs. 
+
+## FAQ (Frequently Asked QUERIES)
+Here are some queries which are commonly used and their SQL equivalents. 
+
+| NEO4J                                                                       | SQL                            | Semantics                                                                           |
+|-----------------------------------------------------------------------------|--------------------------------|-------------------------------------------------------------------------------------|
+| `match (n) detach delete n;`                                                | `delete * from <alles>; `      | delete everything                                                                   |
+| `match (n) return n ;`                                                      | `select * from <alles>; `      | get everything                                                                      |
+| `match (n:LABEL) return n; `                                                | `select * from LABEL; `        | get all nodes of one type (Node label: Group, Help).                                |
+| `match (n:LABEL) return n.attr1, n.attr2 ;`                                 | `select attr1,attr2 from LABEL; ` | get fields of a certain type                                                        | 
+| `match (n:LABEL {name:'test'}) return n;` | `select * from LABEL where name='test' ; ` | query filter | 
+| `match (n:LABEL) where n.name = 'test return n ;` | `select * from LABEL where name = 'test' ; ` | same as above |
+
 
 ## Delete all Queries
 
@@ -11,13 +24,11 @@ the following commands help you reset the database when you're testing different
 - `docker compose down -v` (reset the docker container - preferred)
 - `match (n) detach delete n ;` (neo4j equivalent of (drop all tables ))
 
-## Querying Rules by Level:
 
+## Querying Rules by Level
 
 ```
-
 match (n:Rule) where toInteger(n.level) > 10 return n.rule_id, n.description, n.level ;
-
 ```
 
 ## Visualizing rules as tree 
@@ -28,25 +39,21 @@ MATCH path = (r)<-[:DEPENDS_ON*0..]-(:Rule)
 RETURN path;
 ```
 
-to get a the tree-like visualization of your rules. Here `r` is your ruleset you want to get.  
+to get a tree-like visualization of your rules. Here `r` is your ruleset you want to get.  
 
 
 ## Querying Rules from a Group
 You need to 'attach' the following expression to any rule node that belongs to a group:
 
 ```
-
 (g:Group {name:'fortimail'})-- <RULE>
-
 ```
 
 For example, if you want all rules with level > 10 that belong to the `fortimail` group, the following query helps:
 ```
-
 Match (g:Group {name:'fortimail'})--(n:Rule)
 where toInteger(n.level) > 10
 return n ;
-
 ```
 
 Then, to visualize all rules of a group as a tree, just run this!
@@ -56,6 +63,7 @@ Match (g:Group {name:'fortimail'})--(r:Rule)
 MATCH path = (r)<-[:DEPENDS_ON*0..]-(:Rule)
 RETURN path;
 ```
+
 ## Searching for events
 To find which rules are triggered under a given condition, use this query: 
 
@@ -66,8 +74,8 @@ WITH r, [k IN field_keys | k + ': ' + toString(r[k])] AS field_kv_pairs
 with r, apoc.text.join(field_kv_pairs, ' | ') AS field_string
 where field_string contains "condition" 
 return r, field_string; 
-
 ```
+
 There you need to adjust the `condition` string. 
 
 ### Viewing chains 
@@ -80,7 +88,6 @@ WITH p,r, [k IN field_keys | k + ': ' + toString(r[k])] AS field_kv_pairs
 with p,r, apoc.text.join(field_kv_pairs, ' | ') AS field_string
 where field_string contains "condition" 
 return p, field_string; 
-
 ```
 
 
@@ -99,19 +106,16 @@ return s
 Rules that declare parents (in the `if_sid` or `if_matched_sid` attributes) but where those parents are not defined.
 
 ```
-
 MATCH (child:Rule)
 WHERE child.parents IS NOT NULL
 AND NOT any(parent IN child.parents WHERE EXISTS {
 MATCH (p:Rule {rule_id: parent})
 })
 RETURN child
-
 ```
 
 Output missing parent rules along with their corresponding child:
 ```
-
 MATCH (child:Rule)
 WHERE child.parents IS NOT NULL
 UNWIND child.parents AS parent
@@ -298,5 +302,4 @@ WITH parent, condition_signature, groupSet, collect(child.rule_id) AS equivalent
 WHERE size(equivalent_children) > 1
 RETURN parent.rule_id, parent.source_file, equivalent_children, condition_signature
 ORDER BY parent.rule_id;
-
 ```
